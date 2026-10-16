@@ -1,0 +1,113 @@
+name: Build 360T7 Evil-Twin Sec Firmware (official immortalwrt)
+
+on:
+  workflow_dispatch:
+    inputs:
+      ref:
+        description: 'immortalwrt git ref（分支/tag；默认跟随 25.12 stable 点版本）'
+        required: false
+        default: 'openwrt-25.12'
+
+env:
+  REPO_URL: https://github.com/immortalwrt/immortalwrt
+  CONFIG_FILE: evil-twin.config
+  DIY_P2_SH: diy-part2-sec.sh
+  RELEASE_FILE: sec-release.txt
+  TZ: Asia/Shanghai
+
+jobs:
+  build:
+    runs-on: ubuntu-24.04
+
+    steps:
+    - name: Checkout
+      uses: actions/checkout@main
+
+    - name: Initialization environment
+      env:
+        DEBIAN_FRONTEND: noninteractive
+      run: |
+        sudo rm -rf /etc/apt/sources.list.d/* /usr/share/dotnet /usr/local/lib/android /opt/ghc /opt/hostedtoolcache
+        sudo -E apt-get -qq update
+        sudo -E apt-get -qq install ack antlr3 asciidoc autoconf automake autopoint binutils bison build-essential bzip2 ccache clang cmake cpio curl device-tree-compiler ecj fastjar flex gawk gettext gcc-multilib g++-multilib git gperf haveged help2man intltool libelf-dev libglib2.0-dev libgmp3-dev libltdl-dev libmpc-dev libmpfr-dev libncurses-dev libpython3-dev libreadline-dev libssl-dev libtool libyaml-dev libz-dev ninja-build patch pkgconf python3 python3-pip python3-ply python3-docutils python3-pyelftools qemu-utils re2c rsync scons squashfs-tools subversion swig texinfo unzip vim wget xmlto xxd zlib1g-dev zstd
+        sudo -E apt-get -qq autoremove --purge
+        sudo -E apt-get -qq clean
+        sudo timedatectl set-timezone "$TZ"
+        sudo mkdir -p /workdir
+        sudo chown $USER:$GROUPS /workdir
+
+    - name: Clone source code
+      working-directory: /workdir
+      run: |
+        df -hT $PWD
+        git clone --depth 1 $REPO_URL -b "${{ github.event.inputs.ref || 'openwrt-25.12' }}" openwrt
+        ln -sf /workdir/openwrt $GITHUB_WORKSPACE/openwrt
+
+    - name: Update & install feeds
+      working-directory: /workdir/openwrt
+      run: |
+        ./scripts/feeds update -a
+        ./scripts/feeds install -a
+
+    - name: Load configuration
+      working-directory: /workdir/openwrt
+      run: |
+        cp $GITHUB_WORKSPACE/$CONFIG_FILE .config
+        chmod +x $GITHUB_WORKSPACE/$DIY_P2_SH
+        $GITHUB_WORKSPACE/$DIY_P2_SH
+        make defconfig
+        grep '^CONFIG_TARGET.*DEVICE.*=y' .config | sed -r 's/.*DEVICE_(.*)=y/\1/' > DEVICE_NAME
+
+    - name: Download packages
+      working-directory: /workdir/openwrt
+      run: |
+        make download -j8
+        find dl -size -1024c -exec ls -l {} \;
+        find dl -size -1024c -exec rm -f {} \;
+
+    - name: Compile firmware
+      id: compile
+      working-directory: /workdir/openwrt
+      run: |
+        echo -e "$(nproc) thread compile"
+        make -j$(nproc) || make -j1 || make -j1 V=s
+        echo "status=success" >> $GITHUB_OUTPUT
+        echo "DEVICE_NAME=_$(cat DEVICE_NAME)" >> $GITHUB_ENV
+        echo "FILE_DATE=_$(date +"%Y%m%d%H%M")" >> $GITHUB_ENV
+
+    - name: Organize files
+      id: organize
+      if: (!cancelled())
+      run: |
+        cd /workdir/openwrt/bin/targets/*/*
+        rm -rf packages
+        echo "FIRMWARE=$PWD" >> $GITHUB_ENV
+        echo "status=success" >> $GITHUB_OUTPUT
+
+    - name: Upload firmware artifact
+      uses: actions/upload-artifact@main
+      if: steps.organize.outputs.status == 'success' && !cancelled()
+      with:
+        name: firmware${{ env.DEVICE_NAME }}${{ env.FILE_DATE }}
+        path: ${{ env.FIRMWARE }}
+
+    - name: Generate release
+      id: tag
+      if: steps.organize.outputs.status == 'success' && !cancelled()
+      run: |
+        echo "release_tag=$(date +"%Y.%m.%d-%H%M")" >> $GITHUB_OUTPUT
+        {
+          echo "360T7 evil-twin sec firmware（immortalwrt ${{ github.event.inputs.ref || 'openwrt-25.12' }}）"
+          echo ""
+          cat $GITHUB_WORKSPACE/$RELEASE_FILE
+        } > release-body.md
+
+    - name: Upload firmware to release
+      uses: softprops/action-gh-release@v2
+      if: steps.tag.outputs.release_tag && !cancelled()
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      with:
+        tag_name: ${{ steps.tag.outputs.release_tag }}
+        body_path: release-body.md
+        files: ${{ env.FIRMWARE }}/*

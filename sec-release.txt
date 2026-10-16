@@ -1,0 +1,10 @@
+### 工具清单
+- 攻击链：aircrack-ng 全家 + airmon-ng、mdk4、cowpatty、ettercap 0.8.4.1、reaver、pixiewps、hcxtools、hcxdumptool、nmap、tcpdump
+- evil-twin 框架：fluxion v6.32（禁启动查新）、airgeddon v12.02（强制 tmux、禁查新）
+- 门户栈：lighttpd（默认不自启）+ php8-cgi + kea-dhcp4
+- 网络：zerotier（LuCI 集成）、nftables
+- 无线：mt76/mac80211（kmod-mt7915e），板载 2.4G/5G 原生支持 monitor
+
+### 刷机注意
+- 从 mt798x-SDK（mt_wifi）固件跨刷本镜像：sysupgrade 会因 board/镜像元数据不同拒收，
+  用 uboot 恢复模式强刷或 `sysupgrade -F`

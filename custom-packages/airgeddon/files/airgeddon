@@ -1,0 +1,6 @@
+#!/bin/sh
+# headless: router has no xterm, force tmux window handling
+export AIRGEDDON_WINDOWS_HANDLING=tmux
+# disable startup update check (nags/timeout; v12.02 evaluates the value as a command)
+export AIRGEDDON_AUTO_UPDATE=false
+exec bash /usr/share/airgeddon/airgeddon.sh "$@"
