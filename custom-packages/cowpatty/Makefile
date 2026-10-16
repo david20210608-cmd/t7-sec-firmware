@@ -37,7 +37,7 @@ endef
 
 MAKE_FLAGS += \
 	CC="$(TARGET_CC)" \
-	CFLAGS="$(TARGET_CFLAGS) $(TARGET_CPPFLAGS) -DOPENSSL -Wno-deprecated-declarations" \
+	CFLAGS="$(TARGET_CFLAGS) $(TARGET_CPPFLAGS) -DOPENSSL -Wno-deprecated-declarations -Wno-int-conversion -Wno-return-mismatch -Wno-incompatible-pointer-types -Wno-implicit-function-declaration" \
 	LDLIBS="-lpcap -lcrypto"
 
 define Build/Compile

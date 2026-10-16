@@ -41,7 +41,11 @@ IGNORE_WARNINGS:= \
 	-Wno-unused-function \
 	-Wno-unused-variable \
 	-Wno-unused-parameter \
-	-Wno-pointer-sign
+	-Wno-pointer-sign \
+	-Wno-int-conversion \
+	-Wno-return-mismatch \
+	-Wno-incompatible-pointer-types \
+	-Wno-implicit-function-declaration
 
 TARGET_CFLAGS += \
 	-I$(STAGING_DIR)/usr/include/libnl3 \

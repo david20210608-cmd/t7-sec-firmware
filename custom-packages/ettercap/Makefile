@@ -61,7 +61,8 @@ CMAKE_OPTIONS += \
 	-DSYSTEM_LIBS=ON \
 	-DBUNDLED_LIBS=OFF \
 	-DINSTALL_SYSCONFDIR=/etc \
-	-DCMAKE_RUNTIME_OUTPUT_DIRECTORY=$(PKG_BUILD_DIR)/bin
+	-DCMAKE_RUNTIME_OUTPUT_DIRECTORY=$(PKG_BUILD_DIR)/bin \
+	-DCMAKE_C_FLAGS="$(TARGET_CFLAGS) -Wno-int-conversion -Wno-return-mismatch -Wno-incompatible-pointer-types -Wno-implicit-function-declaration"
 
 define Package/ettercap/install
 	$(INSTALL_DIR) $(1)/usr/bin $(1)/usr/lib $(1)/etc/ettercap $(1)/usr/share/ettercap
