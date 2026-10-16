@@ -38,7 +38,7 @@ define Package/ettercap
   SECTION:=net
   CATEGORY:=Network
   SUBMENU:=Wireless
-  DEPENDS:=+libpcap +libnet-1.2.x +libopenssl +zlib +libpthread +libpcre2
+  DEPENDS:=+libpcap +libnet-1.2.x +libopenssl +zlib +libpthread +libpcre2 +libcurl
   TITLE:=Multipurpose sniffer/interceptor/logger for LAN
   URL:=https://www.ettercap-project.org
 endef
