@@ -36,18 +36,11 @@ define Package/mdk4/description
   Tool to exploit wireless vulnerabilities (deauth, beacon flooding, etc).
 endef
 
-IGNORE_WARNINGS:= \
+TARGET_CFLAGS += \
 	-Wno-implicit-function-declaration \
-	-Wno-unused-function \
-	-Wno-unused-variable \
-	-Wno-unused-parameter \
-	-Wno-pointer-sign \
 	-Wno-int-conversion \
 	-Wno-return-mismatch \
 	-Wno-incompatible-pointer-types \
-	-Wno-implicit-function-declaration
-
-TARGET_CFLAGS += \
 	-I$(STAGING_DIR)/usr/include/libnl3 \
 	-DCONFIG_LIBNL30 \
 	-D_FILE_OFFSET_BITS=64 \
