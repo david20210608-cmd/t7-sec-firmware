@@ -16,6 +16,9 @@ env:
   TZ: Asia/Shanghai
   CCACHE_MAXSIZE: 5G
 
+permissions:
+  contents: write
+
 jobs:
   build:
     runs-on: ubuntu-24.04
