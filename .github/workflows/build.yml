@@ -22,6 +22,14 @@ jobs:
     steps:
     - name: Checkout
       uses: actions/checkout@main
+    - name: Free disk space
+      run: |
+        # immortalwrt 25.12 全量编译 ~50GB；清掉 runner 预装大件（上一轮 3.5h 后磁盘写死：No space left on device）
+        sudo rm -rf /usr/local/lib/android /usr/share/dotnet /opt/ghc /usr/local/.ghcup \
+          /opt/hostedtoolcache/CodeQL /usr/local/share/boost /usr/lib/jvm /usr/share/swift \
+          /opt/microsoft /opt/az /usr/local/sqlpackage /usr/share/miniconda || true
+        sudo docker image prune -af >/dev/null 2>&1 || true
+        df -h /
 
     - name: Initialization environment
       env:
