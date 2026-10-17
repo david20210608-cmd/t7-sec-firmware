@@ -8,3 +8,17 @@
 ### 刷机注意
 - 从 mt798x-SDK（mt_wifi）固件跨刷本镜像：sysupgrade 会因 board/镜像元数据不同拒收，
   用 uboot 恢复模式强刷或 `sysupgrade -F`
+
+## 首编验收通过（run 38976545550，2026-10-17，基于 seed e4e2383+4458067）
+
+sysupgrade 38MB / manifest 260 包，unsquash 实测 40/40 全过：
+- 无线栈：mt7915e/mt76/mac80211/cfg80211（内核 6.12.112），mt7981 四件固件；mt_wifi 无
+- 五件自写套件：mdk4(/usr/sbin)、cowpatty、ettercap 0.8.4.1（etterlog/etterfilter/libettercap*.so 全）、fluxion、airgeddon
+- 新增工具：hcxtools/hcxdumptool/nmap 7.95/reaver 1.6.6/pixiewps/ttyd+luci-app+中文/screen 5.0.1(/usr/sbin)/btop
+- 运行时：bash 5.3、gawk、tmux、curl 8.22、zerotier 1.16.2、四件缺口包、lighttpd-mod-cgi（门户 php 依赖）
+- web/LuCI：argon 主题、简体中文、package-manager(apk)、kmod-leds-gpio（两颗 GPIO LED）
+- uci-defaults 99-evil-twin-web + service/rfkill/7zr/dsniff stubs 在位
+- manifest 零 passwall/mwan3 ✓
+- 首编 9 连败教训全部固化在 git history（apt→磁盘→token→缓存→seed 漏包→gcc14→死变量→打包审计→cache 路径）
+- 下一次编译起走 toolchain/ccache 缓存（31d52ad 修正路径后），预计 ~1.5-2h
+- 跨刷提示：现设备跑 mt798x-SDK 24.10 固件，换本版需 uboot 恢复强刷或 sysupgrade -F
