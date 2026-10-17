@@ -26,17 +26,6 @@ jobs:
     steps:
     - name: Checkout
       uses: actions/checkout@main
-    - name: Cache toolchain & ccache
-      uses: actions/cache@v4
-      with:
-        # staging_dir/toolchain-* 目录名含 gcc 版本，上游换版本自动失效重建；
-        # ccache 目录由 rules.mk 固定为 $(TOPDIR)/.ccache（CONFIG_CCACHE=y）
-        path: |
-          /workdir/openwrt/staging_dir/toolchain-*
-          /workdir/openwrt/.ccache
-        key: immortalwrt-tc-ccache-mediatek-filogic-${{ hashFiles('evil-twin.config') }}
-        restore-keys: |
-          immortalwrt-tc-ccache-mediatek-filogic-
     - name: Free disk space
       run: |
         # immortalwrt 25.12 全量编译 ~50GB；清掉 runner 预装大件（上一轮 3.5h 后磁盘写死：No space left on device）
@@ -65,6 +54,17 @@ jobs:
         git clone --depth 1 $REPO_URL -b "${{ github.event.inputs.ref || 'openwrt-25.12' }}" openwrt
         ln -sf /workdir/openwrt $GITHUB_WORKSPACE/openwrt
 
+    - name: Cache toolchain & ccache
+      uses: actions/cache@v4
+      with:
+        # staging_dir/toolchain-* 目录名含 gcc 版本，上游换版本自动失效重建；
+        # ccache 目录由 rules.mk 固定为 $(TOPDIR)/.ccache（CONFIG_CCACHE=y）
+        path: |
+          /workdir/openwrt/staging_dir/toolchain-*
+          /workdir/openwrt/.ccache
+        key: immortalwrt-tc-ccache-mediatek-filogic-${{ hashFiles('evil-twin.config') }}
+        restore-keys: |
+          immortalwrt-tc-ccache-mediatek-filogic-
     - name: Update & install feeds
       working-directory: /workdir/openwrt
       run: |
