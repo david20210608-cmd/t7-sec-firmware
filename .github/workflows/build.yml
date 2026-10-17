@@ -32,8 +32,8 @@ jobs:
         # staging_dir/toolchain-* 目录名含 gcc 版本，上游换版本自动失效重建；
         # ccache 目录由 rules.mk 固定为 $(TOPDIR)/.ccache（CONFIG_CCACHE=y）
         path: |
-          /workdir/immortalwrt/staging_dir/toolchain-*
-          /workdir/immortalwrt/.ccache
+          /workdir/openwrt/staging_dir/toolchain-*
+          /workdir/openwrt/.ccache
         key: immortalwrt-tc-ccache-mediatek-filogic-${{ hashFiles('evil-twin.config') }}
         restore-keys: |
           immortalwrt-tc-ccache-mediatek-filogic-
