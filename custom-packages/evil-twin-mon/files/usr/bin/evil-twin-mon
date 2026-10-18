@@ -1,0 +1,43 @@
+#!/bin/sh
+# evil-twin-mon: keep one monitor-mode interface (mon<N>) alive per wifi phy.
+#
+# Why: 360T7's mt76 radios default to AP (master) VIFs managed by netifd, but
+# fluxion/airgeddon are written for USB dongles: they either can't use a master
+# interface, or airgeddon's exit cleanup resets the working interface back to
+# managed (real-world verified, immortalwrt 25.12). Fixing by hand each time is
+# tedious, so provisioning is automated instead of patching their interface
+# management.
+#
+# Usage: evil-twin-mon ensure   (also the default action)
+#   for every phy<N>: make sure mon<N> exists and is monitor type; recreate it
+#   (delete + add) if missing or wrong type. Idempotent, no-op if already fine.
+#
+# Called from: /etc/hotplug.d/ieee80211 (radios appearing at boot / wifi reload)
+# and the airgeddon/fluxion launch wrappers (post-exit restoration).
+
+action="${1:-ensure}"
+
+[ "$action" = "ensure" ] || {
+	echo "usage: evil-twin-mon [ensure]" >&2
+	exit 1
+}
+
+for phydir in /sys/class/ieee80211/phy*; do
+	[ -e "$phydir" ] || continue
+	phy="${phydir##*/}"
+	n="${phy#phy}"
+	mon="mon${n}"
+
+	type_now="$(iw dev "$mon" info 2>/dev/null | sed -n 's/^\ttype //p')"
+	[ "$type_now" = "monitor" ] && continue
+
+	# wrong type (e.g. reset to managed by airgeddon cleanup) or missing
+	iw dev "$mon" del 2>/dev/null
+	if iw phy "$phy" interface add "$mon" type monitor 2>/dev/null; then
+		logger -t evil-twin-mon "$mon provisioned on $phy"
+	else
+		logger -t evil-twin-mon "failed to provision $mon on $phy"
+	fi
+done
+
+exit 0

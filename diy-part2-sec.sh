@@ -63,3 +63,16 @@ uci -q commit uhttpd
 exit 0
 SH
 chmod +x package/base-files/files/etc/uci-defaults/99-evil-twin-web
+
+# 无线默认态（2026-10-18 实战）：出厂 radio 是 master mode（AP），airgeddon 只认
+# Managed/Monitor、fluxion 按 USB 网卡思路处理内建 radio，两者都无法把 AP 口转
+# monitor；monitor 口由 evil-twin-mon 包在开机/热插拔/工具进出场时自动挂好。
+# 默认关掉 radio（LuCI 可随时开回），让固件一刷完就处于"可直接选 mon 口开打"的状态。
+cat > package/base-files/files/etc/uci-defaults/99-evil-twin-radio <<'SH'
+#!/bin/sh
+uci -q set wireless.radio0.disabled='1'
+uci -q set wireless.radio1.disabled='1'
+uci -q commit wireless
+exit 0
+SH
+chmod +x package/base-files/files/etc/uci-defaults/99-evil-twin-radio

@@ -1,0 +1,12 @@
+#!/bin/sh
+# tput shim: no OpenWrt package ships tput (terminfo has no binary) and busybox
+# lacks the applet; fluxion only uses cols/lines/civis/cnorm/sgr0. Width is
+# fixed at 80 (stty isn't available either); tmux panes default to 80 anyway.
+case "$1" in
+	cols) v="$(stty size 2>/dev/null | awk '{print $2}')"; echo "${v:-80}" ;;
+	lines) v="$(stty size 2>/dev/null | awk '{print $1}')"; echo "${v:-24}" ;;
+	civis) printf '\033[?25l' ;;
+	cnorm) printf '\033[?25h' ;;
+	sgr0|reset) printf '\033[0m' ;;
+esac
+exit 0

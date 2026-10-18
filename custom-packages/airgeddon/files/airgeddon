@@ -3,4 +3,10 @@
 export AIRGEDDON_WINDOWS_HANDLING=tmux
 # disable startup update check (nags/timeout; v12.02 evaluates the value as a command)
 export AIRGEDDON_AUTO_UPDATE=false
-exec bash /usr/share/airgeddon/airgeddon.sh "$@"
+# make sure monitor interfaces exist before the script enumerates them;
+# airgeddon's exit cleanup resets interfaces to managed, put monitors back
+/usr/bin/evil-twin-mon ensure
+bash /usr/share/airgeddon/airgeddon.sh "$@"
+rc=$?
+/usr/bin/evil-twin-mon ensure
+exit $rc

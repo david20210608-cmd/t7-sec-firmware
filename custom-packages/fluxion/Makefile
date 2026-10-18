@@ -9,7 +9,7 @@ include $(TOPDIR)/rules.mk
 
 PKG_NAME:=fluxion
 PKG_VERSION:=6.32
-PKG_RELEASE:=1
+PKG_RELEASE:=2
 
 PKG_BUILD_DIR:=$(BUILD_DIR)/$(PKG_NAME)-$(PKG_VERSION)
 PKG_SOURCE_PROTO:=git
@@ -24,7 +24,7 @@ define Package/fluxion
   SECTION:=net
   CATEGORY:=Network
   SUBMENU:=Wireless
-  DEPENDS:=+bash
+  DEPENDS:=+bash +evil-twin-mon
   TITLE:=Wireless security auditing and evil twin attack suite
   URL:=https://github.com/FluxionNetwork/fluxion
 endef
@@ -43,7 +43,8 @@ define Package/fluxion/install
 	# .pkgdir 在 PKG_BUILD_DIR 里，cp . 会"拷进自己"（cp: cannot copy a directory
 	# into itself），改 tar 管道并排除构建戳
 	(cd $(PKG_BUILD_DIR) && tar --exclude=./.pkgdir --exclude='.prepared*' --exclude='.configured*' --exclude='.built*' -cf - .) | (cd $(1)/usr/share/fluxion && tar -xf -)
-	$(LN) /usr/share/fluxion/fluxion.sh $(1)/usr/bin/fluxion
+	# wrapper 而非 symlink：进出场时挂 evil-twin-mon 的 monitor 口保障
+	$(INSTALL_BIN) ./files/fluxion $(1)/usr/bin/
 endef
 
 $(eval $(call BuildPackage,fluxion))

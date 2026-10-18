@@ -8,7 +8,7 @@ include $(TOPDIR)/rules.mk
 
 PKG_NAME:=airgeddon
 PKG_VERSION:=12.02
-PKG_RELEASE:=1
+PKG_RELEASE:=2
 
 PKG_BUILD_DIR:=$(BUILD_DIR)/$(PKG_NAME)-$(PKG_VERSION)
 PKG_SOURCE_PROTO:=git
@@ -23,7 +23,7 @@ define Package/airgeddon
   SECTION:=net
   CATEGORY:=Network
   SUBMENU:=Wireless
-  DEPENDS:=+bash +gawk +tmux
+  DEPENDS:=+bash +gawk +tmux +evil-twin-mon
   TITLE:=Multi-use bash script for Linux wireless audits
   URL:=https://github.com/v1s1t0r1sh3r3/airgeddon
 endef
