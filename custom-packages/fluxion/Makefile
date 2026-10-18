@@ -1,21 +1,21 @@
 #
-# Fluxion v6.32 官方 release（FluxionNetwork/fluxion tag v6.32）。
-# 纯脚本树，免编译：整棵装 /usr/share/fluxion，/usr/bin/fluxion 符号链接。
-# v6.32 无 X11 显示时自动回退 tmux 模式（headless 路由器即 tmux），无需 wrapper。
-# 运行时写自己目录（握手 .cap、iptables 备份、preferences.conf）——
-# OpenWrt overlayfs copy-up 落到 rootfs_data，直接可用；sysupgrade 会清。
+# Fluxion 6.38（FluxionNetwork/fluxion master f064d246；上游自 v6.32 起不再打
+# tag，版本号只在主线递进，N1 侧同源）。纯脚本树，免编译：整棵装
+# /usr/share/fluxion，/usr/bin/fluxion 是 wrapper（进出场挂 evil-twin-mon 的
+# monitor 口保障）。运行时写自己目录（握手 .cap、iptables 备份、
+# preferences.conf）——OpenWrt overlayfs copy-up 落到 rootfs_data，直接可用。
 #
 include $(TOPDIR)/rules.mk
 
 PKG_NAME:=fluxion
-PKG_VERSION:=6.32
-PKG_RELEASE:=2
+PKG_VERSION:=6.38
+PKG_RELEASE:=3
 
 PKG_BUILD_DIR:=$(BUILD_DIR)/$(PKG_NAME)-$(PKG_VERSION)
 PKG_SOURCE_PROTO:=git
 PKG_SOURCE_URL:=https://github.com/FluxionNetwork/fluxion.git
 PKG_SOURCE:=$(PKG_NAME)-$(PKG_VERSION).tar.gz
-PKG_SOURCE_VERSION:=18d6c9e555dd87cd1eec53ebdbbf47a934a23a8c
+PKG_SOURCE_VERSION:=f064d246a020a50fa4ded8cd440427e30c7a3818
 PKG_SOURCE_SUBDIR:=$(PKG_NAME)-$(PKG_VERSION)
 
 include $(INCLUDE_DIR)/package.mk
@@ -30,9 +30,18 @@ define Package/fluxion
 endef
 
 define Package/fluxion/description
-  Fluxion v6.32: evil twin attack suite (captive portal phishing).
+  Fluxion 6.38: evil twin attack suite (captive portal phishing).
   Dependencies (aircrack-ng/cowpatty/kea/lighttpd/php8-cgi/mdk4 等) 由本固件
   其余包提供；7zr/dsniff/rfkill 为固件内 stub（攻击流程不调用）。
+endef
+
+# busybox grep 无 PCRE：patches/002 覆盖无空格路径的 3 个文件；这两个
+# attack.sh 路径带空格，GNU patch/quilt 的 -p1 头部解析吃不下，改构建期 sed。
+# 刻意用 cut 而非 awk 取字段——替换文本里不能有 $（会被 make/shell 展开吃掉）
+define Build/Prepare
+	$(call Build/Prepare/Default)
+	$(SED) "s#grep -oP 'type \\\\K\\\\w+'#grep -oE 'type [a-zA-Z0-9]+' | cut -d' ' -f2#" '$(PKG_BUILD_DIR)/attacks/Captive Portal/attack.sh'
+	$(SED) "s#grep -oP 'type \\\\K\\\\w+'#grep -oE 'type [a-zA-Z0-9]+' | cut -d' ' -f2#" '$(PKG_BUILD_DIR)/attacks/Handshake Snooper/attack.sh'
 endef
 
 define Build/Compile
