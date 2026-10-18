@@ -76,3 +76,13 @@ uci -q commit wireless
 exit 0
 SH
 chmod +x package/base-files/files/etc/uci-defaults/99-evil-twin-radio
+
+# 终端 UTF-8（2026-10-18 实战）：LANG 空导致 tmux 客户端按非 UTF-8 渲染，
+# 中文菜单/中文 SSID 逐字节变下划线（实测 4 个汉字→8 个 _）。musl 原生支持
+# C.UTF-8，登录 shell 走 /etc/profile → profile.d。
+mkdir -p package/base-files/files/etc/profile.d
+cat > package/base-files/files/etc/profile.d/99-utf8.sh <<'SH'
+export LANG=C.UTF-8
+export LC_ALL=C.UTF-8
+SH
+chmod +x package/base-files/files/etc/profile.d/99-utf8.sh
