@@ -1,0 +1,33 @@
+# busybox grep has no PCRE (-P): fluxion renders garbage / division-by-zero on
+# OpenWrt (real-world verified on immortalwrt 25.12, mt7981). All three -oP
+# patterns are plain ERE; \d is the only PCRE-ism and is spelled [0-9].
+--- a/lib/FormatUtils.sh
++++ b/lib/FormatUtils.sh
+@@ -29,7 +29,7 @@
+ # Parameters: $1 - format
+ function format_list_specifiers() {
+   # Special specifier also included (with length value as '*').
+-  FormatListSpecifiers=($(echo "$1" | grep -oP "$FormatValidSpecifiers"))
++  FormatListSpecifiers=($(echo "$1" | grep -oE "$FormatValidSpecifiers"))
+ }
+
+ # This function calculates the dynamic specifier count in format.
+@@ -61,7 +61,7 @@
+     format_list_specifiers "$1"
+     __format_calculate_statics_length__specifiers=("${FormatListSpecifiers[@]}")
+   fi
+-  FormatCalculateStaticsLength=$(echo "${__format_calculate_statics_length__specifiers[@]}" | sed -r 's/\.[0-9]+s/s/g' | grep -oP '\d+' | awk 'BEGIN {s=0} {s+=$0} END {print s}')
++  FormatCalculateStaticsLength=$(echo "${__format_calculate_statics_length__specifiers[@]}" | sed -r 's/\.[0-9]+s/s/g' | grep -oE '[0-9]+' | awk 'BEGIN {s=0} {s+=$0} END {print s}')
+ }
+
+ # This function calculates total length of literals in format.
+--- a/fluxion.sh
++++ b/fluxion.sh
+@@ -1231,6 +1231,6 @@
+         airmon-ng start $identifier |
+         grep "monitor .* enabled" |
+-        grep -oP "wl[a-zA-Z0-9]+mon|mon[0-9]+|prism[0-9]+"
++        grep -oE "wl[a-zA-Z0-9]+mon|mon[0-9]+|prism[0-9]+"
+       )
+     else
+       # Attempt activating monitor mode on the interface.

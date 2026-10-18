@@ -1,0 +1,8 @@
+#!/bin/sh
+# Provision mon<N> monitor interfaces whenever wifi phys appear
+# (boot, wifi reload, driver reload). The sleep lets mac80211 finish
+# registering the phy before we add a VIF on it.
+
+[ "$ACTION" = "add" ] || exit 0
+
+( sleep 1; /usr/bin/evil-twin-mon ensure ) &

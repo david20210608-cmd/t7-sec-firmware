@@ -1,0 +1,9 @@
+#!/bin/sh
+# wrapper (not a symlink) so we can provision monitor interfaces around the
+# run: fluxion's own interface handling targets USB dongles, and whatever mode
+# it leaves behind must not survive the session (see custom-packages/evil-twin-mon)
+/usr/bin/evil-twin-mon ensure
+TERM="${TERM:-xterm}" /usr/share/fluxion/fluxion.sh "$@"
+rc=$?
+/usr/bin/evil-twin-mon ensure
+exit $rc

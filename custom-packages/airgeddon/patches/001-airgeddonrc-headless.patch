@@ -1,0 +1,17 @@
+# Headless router defaults (real-world verified on immortalwrt 25.12):
+#  - AUTO_UPDATE=false: startup update check needs full Kali tooling and hangs
+#  - WINDOWS_HANDLING=tmux: no xterm on the box; env var alone is NOT enough,
+#    .airgeddonrc overrides the environment at startup
+--- a/.airgeddonrc
++++ b/.airgeddonrc
+@@ -1,4 +1,4 @@
+ #Enabled true / Disabled false - Auto update feature (it has no effect on development mode) - Default value true
+-AIRGEDDON_AUTO_UPDATE=true
++AIRGEDDON_AUTO_UPDATE=false
+
+ #Enabled true / Disabled false - Skip intro (it has no effect on development mode) - Default value false
+@@ -51,3 +51,3 @@
+
+ #Available values: xterm, tmux - Define the needed tool to be used for windows handling - Default value xterm
+-AIRGEDDON_WINDOWS_HANDLING=xterm
++AIRGEDDON_WINDOWS_HANDLING=tmux
