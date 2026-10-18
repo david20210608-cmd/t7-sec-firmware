@@ -1,0 +1,14 @@
+--- a/airgeddon.sh
++++ b/airgeddon.sh
+@@ -16052,6 +16052,11 @@
+ 
+ 			exp_power=$(echo "${exp_power}" | awk '{gsub(/ /,""); print}')
+ 			exp_essid=${exp_essid:1:${exp_idlength}}
++			# airodump escapes non-printable ESSID bytes as literal \xHH text in its
++			# CSV; the rows below are written back with echo -e, which interprets
++			# those escapes into raw bytes (NUL/newline) and shreds nws.txt line
++			# structure ("integer expected" storms, garbled rows). Keep them inert.
++			exp_essid=${exp_essid//\\/}
+ 
+ 			if [ "${interfaces_band_info['main_wifi_interface','6Ghz_allowed']}" -eq 1 ] && [ "${scan_6ghz_enabled}" != "0" ]; then
+ 				if [[ ${exp_channel} =~ ${valid_channels_24_5_and_6_ghz_regexp} ]]; then
