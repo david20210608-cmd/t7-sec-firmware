@@ -57,6 +57,9 @@ mkdir -p package/base-files/files/etc/uci-defaults
 cat > package/base-files/files/etc/uci-defaults/99-evil-twin-web <<'SH'
 #!/bin/sh
 /etc/init.d/lighttpd disable
+# php8 包默认 doc_root="/www"，而 fluxion 门户的 docroot 在 /tmp/fluxspace；
+# 不清掉则门户每个 PHP 页面都回 "No input file specified."（2026-10-20 实测）
+sed -i 's|^doc_root = .*|doc_root =|' /etc/php.ini
 uci -q delete uhttpd.main.lua_prefix
 uci -q add_list uhttpd.main.ucode_prefix='/cgi-bin/luci=/usr/share/ucode/luci/uhttpd.uc'
 uci -q commit uhttpd
