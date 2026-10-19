@@ -57,11 +57,16 @@ jobs:
     - name: Cache toolchain & ccache
       uses: actions/cache@v4
       with:
-        # staging_dir 全量：host 工具（tools/llvm-bpf 的 LLVM 编译 ~75min，从不打印
-        # make[] 行）+ 交叉工具链；dl 必须一并缓存——源码包每次重新下载的 mtime 比
-        # 恢复的 stamp 新，openwrt 会判定 toolchain 过期强制重建 gcc（实测 5 连重建）
+        # staging_dir 全量（host 工具安装产物 + 交叉工具链，含 .installed stamp）
+        # + build_dir/host、build_dir/toolchain-*（.prepared/.built stamp 所在地）：
+        # openwrt 的 stamp 链是 installed(staging_dir) ← built ← prepared(build_dir)，
+        # 只缓存 staging_dir 时恢复后 build_dir 里 stamp 全缺，make 逐级向上重建，
+        # autoremove 还会先 clean-build（实测：llvm-bpf 重新编 ~76min + gcc 全套重编）
+        # build_dir/target-* 不缓存：10-20GB 逼近 10GB/repo 上限，内核/包重建由热 ccache 兜底
         path: |
           /workdir/openwrt/staging_dir
+          /workdir/openwrt/build_dir/host
+          /workdir/openwrt/build_dir/toolchain-*
           /workdir/openwrt/dl
           /workdir/openwrt/.ccache
         key: immortalwrt-tc-ccache-mediatek-filogic-${{ hashFiles('evil-twin.config') }}
