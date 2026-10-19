@@ -6,7 +6,10 @@ export AIRGEDDON_AUTO_UPDATE=false
 # make sure monitor interfaces exist before the script enumerates them;
 # airgeddon's exit cleanup resets interfaces to managed, put monitors back
 /usr/bin/evil-twin-mon ensure
+# 门户类攻击的 web server 要占 :80，与 uhttpd(LuCI) 冲突；会话期间让位，退出即恢复
+/etc/init.d/uhttpd stop
 bash /usr/share/airgeddon/airgeddon.sh "$@"
 rc=$?
+/etc/init.d/uhttpd start
 /usr/bin/evil-twin-mon ensure
 exit $rc

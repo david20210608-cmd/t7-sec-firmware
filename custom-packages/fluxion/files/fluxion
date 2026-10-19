@@ -3,7 +3,11 @@
 # run: fluxion's own interface handling targets USB dongles, and whatever mode
 # it leaves behind must not survive the session (see custom-packages/evil-twin-mon)
 /usr/bin/evil-twin-mon ensure
+# fluxion 生成的 lighttpd.conf 固定绑 0.0.0.0:80，与 uhttpd(LuCI) 冲突；
+# 攻击会话期间让位，退出即恢复（2026-10-19 实攻踩坑固化）
+/etc/init.d/uhttpd stop
 TERM="${TERM:-xterm}" /usr/share/fluxion/fluxion.sh "$@"
 rc=$?
+/etc/init.d/uhttpd start
 /usr/bin/evil-twin-mon ensure
 exit $rc
