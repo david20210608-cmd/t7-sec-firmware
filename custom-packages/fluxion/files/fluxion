@@ -4,39 +4,14 @@
 # it leaves behind must not survive the session (see custom-packages/evil-twin-mon)
 
 # fluxion 进场会把选中接口整体改名（wlan0→fluxwl0，防抢占，lib/InterfaceUtils.sh
-# 的 interface_reidentify）；正常退出会改回原名，但 Ctrl-C/杀 tmux 中断还原时
-# 残留 fluxwl*（managed/DOWN，原名只存于 fluxion 内存）。这里进场快照接口名
-# 集合，退场按差集 1:1 改回；对不上号（原名被重建占用）或改名失败则删除兜底。
-FLUX_IF_PRE=$(ls /sys/class/net 2>/dev/null)
-
+# 的 interface_reidentify）；Ctrl-C/杀 tmux 中断还原时残留 fluxwl*。本固件基线
+# （radio disabled，只有 evil-twin-mon 的 mon<N>）没有这些口，直接删除即可：
+# mon 口由 evil-twin-mon ensure 重建，netifd 的口（攻击期间拉起过 radio 时）
+# 由 wifi reload 按 uci 配置重建——wrapper 不代管任何接口。
 fluxion_ifrestore() {
-	local post gone newflux g n
-	post=$(ls /sys/class/net 2>/dev/null)
-	gone=""
-	for n in $FLUX_IF_PRE; do
-		echo "$post" | grep -qx "$n" || gone="$gone $n"
-	done
-	newflux=""
-	for n in $post; do
-		case "$n" in
-		fluxwl*|fluxet*) echo "$FLUX_IF_PRE" | grep -qx "$n" || newflux="$newflux $n" ;;
-		esac
-	done
-	[ -z "${newflux# }" ] && return 0
-	set -- $newflux
-	for g in $gone; do
-		n=$1; shift
-		[ -n "$n" ] || break
-		ip link set "$n" down 2>/dev/null
-		iw dev "$n" set type managed 2>/dev/null
-		# 仅当消失数与残留数一致（典型 1:1）且原名空闲才改回；
-		# 对不上号或原名被占则删（busybox ip 无 link del，无线口用 iw dev del）
-		if [ "$(echo $gone | wc -w)" -eq "$(echo $newflux | wc -w)" ] \
-			&& ! ip link show "$g" >/dev/null 2>&1; then
-			ip link set "$n" name "$g" 2>/dev/null || iw dev "$n" del 2>/dev/null
-		else
-			iw dev "$n" del 2>/dev/null
-		fi
+	local n
+	for n in $(ip -o link show 2>/dev/null | sed -n 's/^[0-9]*: \(fluxwl[^:@]*\):.*/\1/p'); do
+		iw dev "$n" del 2>/dev/null
 	done
 }
 
@@ -48,8 +23,9 @@ fluxion_ifrestore() {
 trap '
 	rc=$?
 	/etc/init.d/uhttpd start
-	/usr/bin/evil-twin-mon ensure
 	fluxion_ifrestore
+	wifi reload
+	/usr/bin/evil-twin-mon ensure
 	exit $rc
 ' EXIT HUP INT TERM
 TERM="${TERM:-xterm}" /usr/share/fluxion/fluxion.sh "$@"
