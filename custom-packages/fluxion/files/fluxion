@@ -29,12 +29,13 @@ fluxion_ifrestore() {
 		[ -n "$n" ] || break
 		ip link set "$n" down 2>/dev/null
 		iw dev "$n" set type managed 2>/dev/null
-		# 仅当消失数与残留数一致（典型 1:1）才信任差集配对，否则宁删勿猜
+		# 仅当消失数与残留数一致（典型 1:1）且原名空闲才改回；
+		# 对不上号或原名被占则删（busybox ip 无 link del，无线口用 iw dev del）
 		if [ "$(echo $gone | wc -w)" -eq "$(echo $newflux | wc -w)" ] \
-			&& ip link show "$g" >/dev/null 2>&1; then
-			ip link set "$n" name "$g" 2>/dev/null || ip link del "$n" 2>/dev/null
+			&& ! ip link show "$g" >/dev/null 2>&1; then
+			ip link set "$n" name "$g" 2>/dev/null || iw dev "$n" del 2>/dev/null
 		else
-			ip link del "$n" 2>/dev/null
+			iw dev "$n" del 2>/dev/null
 		fi
 	done
 }
