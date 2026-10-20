@@ -36,6 +36,10 @@ define Package/mdk4/description
   Tool to exploit wireless vulnerabilities (deauth, beacon flooding, etc).
 endef
 
+# -DCONFIG_LIBNL 必须显式给：osdep/linux.c 里跳过 iwpriv 硬检查、改走 nl80211
+# 的开关就是它；且本配方用命令行 CFLAGS= 传参会盖掉 common.mak 的 libnl 自动
+# 检测结果（25.12 已淘汰 wireless-tools，设备上根本没有 iwpriv）。CONFIG_LIBNL30
+# 已有 ⇒ 走 libnl-3 API，链接还需 -lnl-genl-3（genl_family_get_id 等）。
 TARGET_CFLAGS += \
 	-Wno-implicit-function-declaration \
 	-Wno-int-conversion \
@@ -43,12 +47,13 @@ TARGET_CFLAGS += \
 	-Wno-incompatible-pointer-types \
 	-I$(STAGING_DIR)/usr/include/libnl3 \
 	-DCONFIG_LIBNL30 \
+	-DCONFIG_LIBNL \
 	-D_FILE_OFFSET_BITS=64 \
 	-D_REVISION=mdk4-v1 \
 	-W -Wall -O3
 
 TARGET_LDFLAGS:= \
-	-Wl,--gc-sections -lnl
+	-Wl,--gc-sections -lnl -lnl-genl-3
 
 define Build/Compile
 	$(MAKE) -C $(PKG_BUILD_DIR)/ \
