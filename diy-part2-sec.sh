@@ -15,6 +15,18 @@ exit 1
 SH
 chmod +x package/base-files/files/usr/bin/service
 
+# 内核 wext 兼容层（2026-10-20 实测）：25.12 generic config-6.12 把 WIRELESS_EXT
+# 关了，CFG80211_WEXT 因依赖被连带隐藏 ⇒ aircrack-osdep 全军覆没（mdk4
+# "Can't find wireless tools"、aireplay-ng ioctl(SIOCSIWMODE) failed）。
+# mac80211 Makefile 无 WEXT 开关、Config-kernel.in 无通用符号透传，只能直接改
+# target 配置种子。两个符号都要开：WEXT_CORE 依赖 WIRELESS_EXT，cfg80211 的
+# wext 桥接由 CFG80211_WEXT 提供。
+sed -i \
+  -e 's|^# CONFIG_WIRELESS_EXT is not set|CONFIG_WIRELESS_EXT=y|' \
+  target/linux/generic/config-6.12
+grep -q '^CONFIG_CFG80211_WEXT=y' target/linux/generic/config-6.12 || \
+  echo 'CONFIG_CFG80211_WEXT=y' >> target/linux/generic/config-6.12
+
 # 自带源码包（官方 feed 已淘汰，配方在仓库 custom-packages/ 下）
 rm -rf package/custom
 mkdir -p package/custom
