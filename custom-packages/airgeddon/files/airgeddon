@@ -3,6 +3,11 @@
 export AIRGEDDON_WINDOWS_HANDLING=tmux
 # disable startup update check (nags/timeout; v12.02 evaluates the value as a command)
 export AIRGEDDON_AUTO_UPDATE=false
+# enable skip intro, slient checks
+export AIRGEDDON_SKIP_INTRO=true
+export AIRGEDDON_SILENT_CHECKS=true
+# disable 6Ghz
+export AIRGEDDON_6GHZ_ENABLED=false
 # make sure monitor interfaces exist before the script enumerates them;
 # airgeddon's exit cleanup resets interfaces to managed, put monitors back
 /usr/bin/evil-twin-mon ensure
