@@ -52,6 +52,46 @@ chmod +x package/base-files/files/usr/bin/rfkill \
          package/base-files/files/usr/bin/7zr \
          package/base-files/files/usr/bin/dsniff
 
+# dnsspoof 垫片（2026-10-20 实攻翻车）：fluxion Captive Portal 的"DNS 服务"
+# 就是 `dnsspoof -i <if> -f hosts`（attack.sh:2062）——当年 stub 掉 dsniff 的
+# 理由（"仅依赖清单存在、源码无调用点"）是错的。dsniff 包 25.12 feed 里
+# 已彻底消失（master 都没有），用固件自带的 dnsmasq-full 等效替代：
+# 取 hosts 文件里的通配/首个地址做 address=/#/ 黑洞应答。
+# 注意 address=/#/ 的 # 过双层 shell 会被吞，必须走配置文件。
+mkdir -p package/base-files/files/usr/bin
+cat > package/base-files/files/usr/bin/dnsspoof <<'SH'
+#!/bin/sh
+# dnsspoof shim: dsniff (and thus dnsspoof) is not packaged in 25.12.
+# Emulates `dnsspoof [-i iface] [-f hostsfile]`: answers every query with
+# the first spoofed address in the hosts file (a wildcard entry wins),
+# falling back to the interface address. Backed by dnsmasq's catch-all
+# `address=/#/`; runs in the foreground so the caller's process-group
+# cleanup (tmux window kill) reaps it.
+iface=""
+hosts=""
+while getopts "i:f:c:p:" o; do
+	case "$o" in
+	i) iface="$OPTARG" ;;
+	f) hosts="$OPTARG" ;;
+	esac
+done
+ip=$(awk '$1 !~ /^#/ && $2 ~ /^\*/ {print $1; exit}' "$hosts" 2>/dev/null)
+[ -n "$ip" ] || ip=$(awk '$1 !~ /^#/ {print $1; exit}' "$hosts" 2>/dev/null)
+[ -n "$ip" ] || ip=$(ip -4 addr show "$iface" 2>/dev/null | awk '/inet /{split($2,a,"/");print a[1];exit}')
+[ -n "$ip" ] || ip="127.0.0.1"
+conf="/tmp/dnsspoof.$$.conf"
+{
+	echo "no-resolv"
+	echo "no-hosts"
+	echo "address=/#/$ip"
+} > "$conf"
+exec dnsmasq --keep-in-foreground \
+	--conf-file="$conf" --port=53 --listen-address="$ip" \
+	--bind-interfaces --pid-file="/tmp/dnsspoof.$$.pid" \
+	--log-facility="/tmp/dnsspoof.$$.log"
+SH
+chmod +x package/base-files/files/usr/bin/dnsspoof
+
 # airmon-ng：airgeddon 必需项。feed 里的 airmon-ng 子包依赖已淘汰的
 # wireless-tools（25.12 feed 已无此包）装不上；它只是个脚本，直接从
 # aircrack-ng 官方仓库按 tag 取（1.7，与固件内 aircrack-ng 版本一致）。
