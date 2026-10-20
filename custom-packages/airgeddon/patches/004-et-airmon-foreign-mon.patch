@@ -1,0 +1,75 @@
+--- a/airgeddon.sh
++++ b/airgeddon.sh
+@@ -1711,6 +1711,12 @@
+ 	iface_phy_number=${phy_interface:3:1}
+ 	iface_monitor_et_deauth="mon${iface_phy_number}"
+ 
++	if [ "${iface_monitor_et_deauth}" = "${interface}" ] || [ -e "/sys/class/net/${iface_monitor_et_deauth}" ]; then
++		# deauth iface name would collide with the AP iface (or pre-exists);
++		# provision the deauth VIF under a free name instead
++		iface_monitor_et_deauth="mon${iface_phy_number}et"
++	fi
++
+ 	iw dev "${interface}" set channel "${channel}" > /dev/null 2>&1
+ 	iw phy "${phy_interface}" interface add "${iface_monitor_et_deauth}" type monitor 2> /dev/null
+ 	ip link set "${iface_monitor_et_deauth}" up > /dev/null 2>&1
+@@ -1731,7 +1737,17 @@
+ 			ifacemode="Managed"
+ 			[[ ${new_interface} =~ \]?([A-Za-z0-9]+)\)?$ ]] && new_interface="${BASH_REMATCH[1]}"
+ 
+-			if [ "${interface}" != "${new_interface}" ]; then
++			if [ -z "${new_interface}" ]; then
++				# the monitor iface wasn't created by airmon-ng (e.g. evil-twin-mon's
++				# mon<N>), so stopping it yields no rename info; switch mode in place
++				# and keep the name instead of assigning an empty interface
++				if ! set_mode_without_airmon "${interface}" "managed"; then
++					echo
++					language_strings "${language}" 1 "red"
++					language_strings "${language}" 115 "read"
++					return 1
++				fi
++			elif [ "${interface}" != "${new_interface}" ]; then
+ 				if check_interface_coherence; then
+ 					interface=${new_interface}
+ 					phy_interface=$(physical_interface_finder "${interface}")
+@@ -1775,7 +1791,10 @@
+ 		set_mode_without_airmon "${interface}" "managed"
+ 		ifacemode="Managed"
+ 	else
+-		if [ "${interface_airmon_compatible}" -eq 1 ]; then
++		# the monitor iface (e.g. evil-twin-mon's mon<N>) wasn't airmon-created;
++		# restoring through airmon start would manufacture names like mon0mon.
++		# Always switch mode in place instead.
++		if [ 0 -eq 1 ]; then
+ 			new_interface=$(${airmon} start "${interface}" 2> /dev/null | grep monitor)
+ 			desired_interface_name=""
+ 			[[ ${new_interface} =~ ^You[[:space:]]already[[:space:]]have[[:space:]]a[[:space:]]([A-Za-z0-9]+)[[:space:]]device ]] && desired_interface_name="${BASH_REMATCH[1]}"
+@@ -1928,7 +1947,15 @@
+ 			ifacemode="Managed"
+ 			[[ ${new_interface} =~ \]?([A-Za-z0-9]+)\)?$ ]] && new_interface="${BASH_REMATCH[1]}"
+ 
+-			if [ "${interface}" != "${new_interface}" ]; then
++			if [ -z "${new_interface}" ]; then
++				# monitor iface not created by airmon-ng: no rename info; switch in place
++				if ! set_mode_without_airmon "${1}" "managed"; then
++					echo
++					language_strings "${language}" 1 "red"
++					language_strings "${language}" 115 "read"
++					return 1
++				fi
++			elif [ "${interface}" != "${new_interface}" ]; then
+ 				if check_interface_coherence; then
+ 					interface=${new_interface}
+ 					phy_interface=$(physical_interface_finder "${interface}")
+@@ -1953,7 +1980,10 @@
+ 			new_secondary_interface=$(${airmon} stop "${1}" 2> /dev/null | grep station | head -n 1)
+ 			[[ ${new_secondary_interface} =~ \]?([A-Za-z0-9]+)\)?$ ]] && new_secondary_interface="${BASH_REMATCH[1]}"
+ 
+-			if [ "${1}" != "${new_secondary_interface}" ]; then
++			if [ -z "${new_secondary_interface}" ]; then
++				# monitor iface not created by airmon-ng: switch in place
++				set_mode_without_airmon "${1}" "managed"
++			elif [ "${1}" != "${new_secondary_interface}" ]; then
+ 				secondary_wifi_interface=${new_secondary_interface}
+ 				current_iface_on_messages="${secondary_wifi_interface}"
+ 				echo
