@@ -11,10 +11,18 @@ export AIRGEDDON_6GHZ_ENABLED=false
 # make sure monitor interfaces exist before the script enumerates them;
 # airgeddon's exit cleanup resets interfaces to managed, put monitors back
 /usr/bin/evil-twin-mon ensure
-# 门户类攻击的 web server 要占 :80，与 uhttpd(LuCI) 冲突；会话期间让位，退出即恢复
+# 门户类攻击要独占 :80（web 门户）与 :53/:67（dns/dhcp 黑洞），与系统
+# uhttpd(LuCI)/dnsmasq-full 冲突（dnsmasq 通配绑 :53，attack 实例报
+# "Address in use"——airgeddon 官方要求同样停掉系统 resolver）。会话期间
+# 让位，退出即恢复；恢复动作走 trap，强杀场景同样执行。
 /etc/init.d/uhttpd stop
+/etc/init.d/dnsmasq stop
+trap '
+	rc=$?
+	/etc/init.d/dnsmasq start
+	/etc/init.d/uhttpd start
+	/usr/bin/evil-twin-mon ensure
+	exit $rc
+' EXIT HUP INT TERM
 bash /usr/share/airgeddon/airgeddon.sh "$@"
-rc=$?
-/etc/init.d/uhttpd start
-/usr/bin/evil-twin-mon ensure
-exit $rc
+exit
