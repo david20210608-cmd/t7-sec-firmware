@@ -1,8 +1,19 @@
 #!/bin/sh
 # Provision mon<N> monitor interfaces whenever wifi phys appear
-# (boot, wifi reload, driver reload). The sleep lets mac80211 finish
-# registering the phy before we add a VIF on it.
+# (boot, wifi reload, driver reload).
+
+# Boot-time race: right after the phy registers, netifd/hostapd are still
+# settling their wireless config and (observed 2026-10-20, twice) freshly
+# added VIFs vanish. A single ensure is not enough -- re-check for a while;
+# ensure is idempotent and only logs when it actually (re)creates, so the
+# re-provision timestamps in logread pin down the deletion window.
 
 [ "$ACTION" = "add" ] || exit 0
 
-( sleep 1; /usr/bin/evil-twin-mon ensure ) &
+(
+	for _ in 1 2 3 4 5 6 7 8 9 10 11 12 13 14 15
+	do
+		sleep 2
+		/usr/bin/evil-twin-mon ensure
+	done
+) &
