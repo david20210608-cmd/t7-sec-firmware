@@ -1,0 +1,29 @@
+--- a/airgeddon.sh
++++ b/airgeddon.sh
+@@ -17762,7 +17762,7 @@
+ 
+ 	debug_print
+ 
+-	jtr_version=$(john | grep -Po '(?<=version )[0-9\.]+|(?<=John the Ripper )\d+\.\d+\.\d+')
++	jtr_version=$(john 2>&1 | sed -nE -e 's/.*version ([0-9.]+).*/\1/p' -e 's/.*John the Ripper ([0-9]+\.[0-9]+\.[0-9]+).*/\1/p' | head -n1)
+ }
+ 
+ #Determine hashcat version
+@@ -17807,7 +17807,7 @@
+ 
+ 	debug_print
+ 
+-	hostapd_version=$(hostapd -v 2>&1 | grep -oiP '^hostapd v\K[0-9]+\.[0-9]+')
++	hostapd_version=$(hostapd -v 2>&1 | sed -nE 's/^[Hh]ostapd [vV]([0-9]+\.[0-9]+).*/\1/p' | head -n1)
+ }
+ 
+ #Determine hostapd-wpe version
+@@ -17815,7 +17815,7 @@
+ 
+ 	debug_print
+ 
+-	hostapd_wpe_version=$(hostapd-wpe -v 2>&1 | grep -oiP '^hostapd-WPE v\K[0-9]+\.[0-9]+')
++	hostapd_wpe_version=$(hostapd-wpe -v 2>&1 | sed -nE 's/^hostapd-[Ww][Pp][Ee] [vV]([0-9]+\.[0-9]+).*/\1/p' | head -n1)
+ }
+ 
+ #Determine bully version
