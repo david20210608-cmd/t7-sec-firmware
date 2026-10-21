@@ -9,7 +9,7 @@ include $(TOPDIR)/rules.mk
 
 PKG_NAME:=fluxion
 PKG_VERSION:=6.38
-PKG_RELEASE:=5
+PKG_RELEASE:=6
 
 PKG_BUILD_DIR:=$(BUILD_DIR)/$(PKG_NAME)-$(PKG_VERSION)
 PKG_SOURCE_PROTO:=git
@@ -55,8 +55,9 @@ endef
 define Package/fluxion/install
 	$(INSTALL_DIR) $(1)/usr/share/fluxion $(1)/usr/bin
 	# .pkgdir 在 PKG_BUILD_DIR 里，cp . 会"拷进自己"（cp: cannot copy a directory
-	# into itself），改 tar 管道并排除构建戳
-	(cd $(PKG_BUILD_DIR) && tar --exclude=./.pkgdir --exclude='.prepared*' --exclude='.configured*' --exclude='.built*' -cf - .) | (cd $(1)/usr/share/fluxion && tar -xf -)
+	# into itself），改 tar 管道并排除构建戳与 ipkg 打包暂存（2026-10-21 发现设备
+	# /usr/share/fluxion/ipkg-aarch64_cortex-a53/ 是这份残留）
+	(cd $(PKG_BUILD_DIR) && tar --exclude=./.pkgdir --exclude=./*.pkgdir --exclude='./ipkg-*' --exclude='.prepared*' --exclude='.configured*' --exclude='.built*' -cf - .) | (cd $(1)/usr/share/fluxion && tar -xf -)
 	# wrapper 而非 symlink：进出场时挂 evil-twin-mon 的 monitor 口保障
 	$(INSTALL_BIN) ./files/fluxion $(1)/usr/bin/
 	# Handshake Snooper 的 PMF 检测助手（由构建期 sed 注入 arbiter 调用）
