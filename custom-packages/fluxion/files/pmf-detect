@@ -1,0 +1,23 @@
+#!/bin/sh
+# t7-sec: WPA3/PMF detector for fluxion Handshake Snooper.
+# Usage: pmf-detect <airodump-csv> <target-bssid>
+# Reads airodump-ng's CSV output and warns (to stdout) when the target AP
+# advertises SAE (WPA3): SAE enforces 802.11w PMF, so forged deauth frames
+# are dropped by clients - passive capture is the only reliable path, and
+# the hcxpcapngtool verifier should be used to validate the capture.
+# Silent exit when the target row is absent (capture not ready / plain WPA2).
+[ "$#" -eq 2 ] || exit 0
+csv="$1"
+mac="$2"
+[ -r "$csv" ] || exit 0
+row=$(grep -i "^$mac," "$csv" 2>/dev/null | head -n 1)
+[ -n "$row" ] || exit 0
+case "$row" in
+  *SAE*)
+    now=$(date '+%H:%M:%S')
+    echo "[$now] WARNING: target advertises SAE (WPA3); PMF drops forged deauth -"
+    echo "  passive capture only. Verify with the hcxpcapngtool verifier;"
+    echo "  convert later with: hcxpcapngtool -o hash.22000 <capture.cap>"
+    ;;
+esac
+exit 0

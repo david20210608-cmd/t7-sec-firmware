@@ -9,7 +9,7 @@ include $(TOPDIR)/rules.mk
 
 PKG_NAME:=fluxion
 PKG_VERSION:=6.38
-PKG_RELEASE:=3
+PKG_RELEASE:=4
 
 PKG_BUILD_DIR:=$(BUILD_DIR)/$(PKG_NAME)-$(PKG_VERSION)
 PKG_SOURCE_PROTO:=git
@@ -42,6 +42,12 @@ define Build/Prepare
 	$(call Build/Prepare/Default)
 	$(SED) "s#grep -oP 'type \\\\K\\\\w+'#grep -oE 'type [a-zA-Z0-9]+' | cut -d' ' -f2#" '$(PKG_BUILD_DIR)/attacks/Captive Portal/attack.sh'
 	$(SED) "s#grep -oP 'type \\\\K\\\\w+'#grep -oE 'type [a-zA-Z0-9]+' | cut -d' ' -f2#" '$(PKG_BUILD_DIR)/attacks/Handshake Snooper/attack.sh'
+	# t7: Handshake Snooper 增加 hcxpcapngtool 验证器（SAE/WPA3 可判，
+	# cowpatty/aircrack 只认 WPA2 4-way）+ PMF 提示（SAE 目标 deauth 无效）。
+	# 注意：这个 sed 的 `#` 分隔符不能换成别的——插入文本含 # 注释时才换 @。
+	$(SED) 's#^  choices.=(..FLUXIONGeneralBackOption.)$#  if [ -x "$$(command -v hcxpcapngtool)" ]; then\n    choices+=("hash - hcxpcapngtool (SAE/WPA3)")\n  fi\n&#' '$(PKG_BUILD_DIR)/attacks/Handshake Snooper/attack.sh'
+	$(SED) 's#^      HandshakeSnooperVerifierIdentifier="cowpatty" ;;$#&\n    "hash - hcxpcapngtool (SAE/WPA3)")\n      HandshakeSnooperVerifierIdentifier="hcxpcapngtool" ;;#' '$(PKG_BUILD_DIR)/attacks/Handshake Snooper/attack.sh'
+	$(SED) 's@^  handshake_snooper_start_deauthenticator$@&\n  # t7: WPA3/SAE targets enforce 802.11w PMF; forged deauth is dropped.\n  ( sleep 10; pmf-detect "$$FLUXIONWorkspacePath/capture/dump-01.csv" "$$FluxionTargetMAC" >> "$$FLUXIONWorkspacePath/handshake_snooper.log" 2>\&1 ) \&@' '$(PKG_BUILD_DIR)/attacks/Handshake Snooper/attack.sh'
 endef
 
 define Build/Compile
@@ -54,6 +60,8 @@ define Package/fluxion/install
 	(cd $(PKG_BUILD_DIR) && tar --exclude=./.pkgdir --exclude='.prepared*' --exclude='.configured*' --exclude='.built*' -cf - .) | (cd $(1)/usr/share/fluxion && tar -xf -)
 	# wrapper 而非 symlink：进出场时挂 evil-twin-mon 的 monitor 口保障
 	$(INSTALL_BIN) ./files/fluxion $(1)/usr/bin/
+	# Handshake Snooper 的 PMF 检测助手（由构建期 sed 注入 arbiter 调用）
+	$(INSTALL_BIN) ./files/pmf-detect $(1)/usr/bin/
 endef
 
 $(eval $(call BuildPackage,fluxion))

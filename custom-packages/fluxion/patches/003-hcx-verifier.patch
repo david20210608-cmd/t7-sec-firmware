@@ -1,0 +1,33 @@
+--- a/lib/HashUtils.sh
++++ b/lib/HashUtils.sh
+@@ -56,6 +56,18 @@
+         local hashData=$(cowpatty -cr "$handshakePath")
+       fi
+       ;;
++    "hcxpcapngtool")
++      # t7: SAE/WPA3-capable verifier. hcxpcapngtool writes a 22000 hash file
++      # only when the capture holds a complete message pair, a PMKID, or an
++      # SAE exchange - the non-empty output file is the validity check itself.
++      local hash22000Path="${handshakePath%.*}.22000"
++      rm -f "$hash22000Path"
++      hcxpcapngtool -o "$hash22000Path" "$handshakePath" >> $HashOutputDevice 2>&1
++      if [ -s "$hash22000Path" ]; then
++        local hashData=1
++        echo "HCX 22000 hash written: $hash22000Path" > $HashOutputDevice
++      fi
++      ;;
+     *)
+       echo "Invalid verifier, quitting!" > $HashOutputDevice
+       return 1
+@@ -87,6 +99,11 @@
+       if echo "$hashData" | grep -q "Collected all necessary data to mount crack against WPA2/PSK passphrase."; then
+         local -r hashResult=1
+       fi ;;
++
++    "hcxpcapngtool")
++      if [ -s "$hash22000Path" ]; then
++        local hashResult=1
++      fi ;;
+   esac
+ 
+   if [ -z "$hashResult" ]; then
