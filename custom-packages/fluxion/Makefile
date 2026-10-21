@@ -9,7 +9,7 @@ include $(TOPDIR)/rules.mk
 
 PKG_NAME:=fluxion
 PKG_VERSION:=6.38
-PKG_RELEASE:=4
+PKG_RELEASE:=5
 
 PKG_BUILD_DIR:=$(BUILD_DIR)/$(PKG_NAME)-$(PKG_VERSION)
 PKG_SOURCE_PROTO:=git
@@ -42,12 +42,11 @@ define Build/Prepare
 	$(call Build/Prepare/Default)
 	$(SED) "s#grep -oP 'type \\\\K\\\\w+'#grep -oE 'type [a-zA-Z0-9]+' | cut -d' ' -f2#" '$(PKG_BUILD_DIR)/attacks/Captive Portal/attack.sh'
 	$(SED) "s#grep -oP 'type \\\\K\\\\w+'#grep -oE 'type [a-zA-Z0-9]+' | cut -d' ' -f2#" '$(PKG_BUILD_DIR)/attacks/Handshake Snooper/attack.sh'
-	# t7: Handshake Snooper 增加 hcxpcapngtool 验证器（SAE/WPA3 可判，
-	# cowpatty/aircrack 只认 WPA2 4-way）+ PMF 提示（SAE 目标 deauth 无效）。
-	# 注意：这个 sed 的 `#` 分隔符不能换成别的——插入文本含 # 注释时才换 @。
-	$(SED) 's#^  choices.=(..FLUXIONGeneralBackOption.)$#  if [ -x "$$(command -v hcxpcapngtool)" ]; then\n    choices+=("hash - hcxpcapngtool (SAE/WPA3)")\n  fi\n&#' '$(PKG_BUILD_DIR)/attacks/Handshake Snooper/attack.sh'
-	$(SED) 's#^      HandshakeSnooperVerifierIdentifier="cowpatty" ;;$#&\n    "hash - hcxpcapngtool (SAE/WPA3)")\n      HandshakeSnooperVerifierIdentifier="hcxpcapngtool" ;;#' '$(PKG_BUILD_DIR)/attacks/Handshake Snooper/attack.sh'
-	$(SED) 's@^  handshake_snooper_start_deauthenticator$@&\n  # t7: WPA3/SAE targets enforce 802.11w PMF; forged deauth is dropped.\n  ( sleep 10; pmf-detect "$$FLUXIONWorkspacePath/capture/dump-01.csv" "$$FluxionTargetMAC" >> "$$FLUXIONWorkspacePath/handshake_snooper.log" 2>\&1 ) \&@' '$(PKG_BUILD_DIR)/attacks/Handshake Snooper/attack.sh'
+	# t7: Handshake Snooper 加 hcxpcapngtool 验证器（SAE/WPA3 可判）+ PMF 提示。
+	# sed 程序含 $，define 体经 eval/call 双重展开（$$ -> $ 再被当变量展开为空、
+	# 行尾 $ 锚+分隔符 $@/$# 被吃），70e56b4 首编即死于 unterminated s command
+	# ——必须放脚本文件，脚本内容不经过 make 展开。
+	sh ./files/patch-handshake-snooper.sh '$(PKG_BUILD_DIR)'
 endef
 
 define Build/Compile
