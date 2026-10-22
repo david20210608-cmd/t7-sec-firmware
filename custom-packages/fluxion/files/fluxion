@@ -16,6 +16,12 @@ fluxion_ifrestore() {
 }
 
 /usr/bin/evil-twin-mon ensure
+# fw4（nftables）input 基础链 policy=drop，fluxwl* 不属于任何 zone：手机的
+# DNS 劫持与 DNAT 后的 80/443 流量全被静默丢弃（2026-10-22 实攻：能连 WiFi、
+# 拿到 IP，但门户不可达，无任何弹窗）。会话期间放行。幂等插入、退出不清理
+# ——fluxwl* 接口退场即删，规则平时匹配不到任何包，留着无害。
+nft list chain inet fw4 input 2>/dev/null | grep -q fluxwl || \
+	nft insert rule inet fw4 input iifname "fluxwl*" counter accept
 # fluxion 生成的 lighttpd.conf 固定绑 0.0.0.0:80，与 uhttpd(LuCI) 冲突；
 # 攻击会话期间让位，退出即恢复（2026-10-19 实攻踩坑固化）。
 # 恢复动作全走 trap：fluxion 被 Ctrl-C/杀 tmux 强杀时同样执行。
