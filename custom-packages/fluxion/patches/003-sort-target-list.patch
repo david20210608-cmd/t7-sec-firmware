@@ -6,6 +6,8 @@ come first, then by signal strength; unsupported power (-1) counts as
 weakest. Parallel candidate* arrays are reordered by one index permutation.
 
 --- a/fluxion.sh
++++ b/fluxion.sh
+@@ -1868,6 +1868,31 @@ fluxion_get_target() {
      fi
    done
  
