@@ -1,0 +1,63 @@
+t7: sort the WPS menu target list ascending by signal strength (dBm):
+weakest APs first, strongest at the bottom, same direction as the 005
+patch. Pure-bash selection sort because busybox sort ignores -k - the
+upstream "sort -k3,3n" here silently never sorted on t7.
+
+diff --git a/airgeddon.sh b/airgeddon.sh
+index eaa4e47..6a96a37 100755
+--- a/airgeddon.sh
++++ b/airgeddon.sh
+@@ -16239,6 +16239,44 @@ function explore_for_wps_targets_option() {
+ 	local wpssp_band
+ 	declare -A wps_lockeds
+ 	wps_lockeds[${wash_counter}]="No"
++
++	# t7: busybox sort only supports [-nru], so the upstream "sort -k3,3n"
++	# is silently ignored and the list keeps wash arrival order. Selection
++	# sort the data lines by dBm ascending - weakest APs first, strongest
++	# at the bottom - then rebuild the file as (2 header lines, sorted data).
++	local -a __wpsLines=() __wpsScore=()
++	local __line __pw __val __i __j __best __tmp
++	while IFS= read -r __line; do
++		__pw=$(echo "${__line}" | awk '{print $3}')
++		[[ "${__pw}" =~ ^-?[0-9]+$ ]] || __pw=0
++		if [ "${__pw:0:1}" = "-" ]; then
++			__val=$(( -10#${__pw#-} ))
++		else
++			__val=$(( 10#${__pw#-} ))
++		fi
++		__wpsLines+=("${__line}")
++		__wpsScore+=("${__val}")
++	done < <(tail -n +3 "${tmpdir}wps.txt" 2> /dev/null)
++	for __i in "${!__wpsLines[@]}"; do
++		__best=$__i
++		for (( __j = __i + 1; __j < ${#__wpsLines[@]}; __j++ )); do
++			if [ "${__wpsScore[$__j]}" -lt "${__wpsScore[$__best]}" ]; then
++				__best=$__j
++			fi
++		done
++		__tmp=${__wpsLines[$__i]}
++		__wpsLines[$__i]=${__wpsLines[$__best]}
++		__wpsLines[$__best]=$__tmp
++		__tmp=${__wpsScore[$__i]}
++		__wpsScore[$__i]=${__wpsScore[$__best]}
++		__wpsScore[$__best]=$__tmp
++	done
++	{
++		head -n 2 "${tmpdir}wps.txt" 2> /dev/null
++		for __i in "${__wpsLines[@]}"; do
++			printf '%s\n' "${__i}"
++		done
++	} > "${tmpdir}wps_sorted.txt"
+ 	while IFS=, read -r expwps_line; do
+ 
+ 		target_index=$((target_index + 1))
+@@ -16322,7 +16360,7 @@ function explore_for_wps_targets_option() {
+ 			wps_lockeds["${wash_counter}"]=${expwps_locked}
+ 			echo -e "${wash_color} ${wpssp1}${wash_counter})   ${expwps_bssid}  ${wpssp2}${expwps_channel}   ${expwps_band}${wpssp_band}    ${wpssp4}${expwps_power}%   ${expwps_version}   ${expwps_locked}${wpssp3}   ${expwps_essid}"
+ 		fi
+-	done < <(cat <(head -n 2 "${tmpdir}wps.txt") <(tail -n +3 "${tmpdir}wps.txt" | sort -k3,3n 2> /dev/null))
++	done < "${tmpdir}wps_sorted.txt"
+ 
+ 	echo
+ 	if [ "${wash_counter}" -eq 1 ]; then
