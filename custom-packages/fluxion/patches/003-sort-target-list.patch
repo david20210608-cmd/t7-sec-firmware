@@ -1,0 +1,65 @@
+t7: sort target lists by client count (desc), then power (desc)
+
+WIFI LIST (interactive target selection) and fluxion_scan_only output
+previously followed airodump-ng CSV order. Sort both so APs with clients
+come first, then by signal strength; unsupported power (-1) counts as
+weakest. Parallel candidate* arrays are reordered by one index permutation.
+
+--- a/fluxion.sh
+     fi
+   done
+ 
++  # Sort candidates by client count (desc), then power (desc), treating
++  # unsupported power (-1) as weakest. All candidate* arrays are parallel,
++  # so they must be reordered together by the same index permutation.
++  if [ ${#candidatesMAC[@]} -gt 1 ]; then
++    local -a __sortByClientsPower=( $(
++      local __i
++      for __i in "${!candidatesMAC[@]}"; do
++        local __pw=${candidatesPower[$__i]}
++        [ "$__pw" = "-1" ] && __pw=-999
++        echo "${candidatesClientsCount[$__i]} $__pw $__i"
++      done | sort -k1,1nr -k2,2nr -k3,3n | awk '{print $3}'
++    ) )
++    local __arrName __oi
++    for __arrName in candidatesColor candidatesHandshake candidatesESSID \
++      candidatesQuality candidatesPower candidatesClientsCount \
++      candidatesChannel candidatesSecurity candidatesMAC candidatesVendor; do
++      local -a __sortOld=() __sortNew=()
++      eval "__sortOld=(\"\${$__arrName[@]}\")"
++      for __oi in "${__sortByClientsPower[@]}"; do
++        __sortNew+=("${__sortOld[$__oi]}")
++      done
++      eval "$__arrName=(\"\${__sortNew[@]}\")"
++    done
++  fi
++
+   # Check if all networks were filtered out
+   if [ ${#candidatesMAC[@]} -eq 0 ]; then
+     local emptyMessage=""
+@@ -3247,9 +3272,22 @@ fluxion_scan_only() {
+   printf "%-4s %-17s %-4s %-5s %-4s %-10s %-30s %s\n" \
+     "---" "-----------------" "---" "-----" "----" "----------" "------------------------------" "----"
+ 
+-  # Print each network.
+-  local info
+-  for info in "${candidates[@]}"; do
++  # Sort networks by client count (desc), then power (desc), treating
++  # unsupported power (-1) as weakest, then print.
++  local -a __scanOrder=( $(
++    local info __i=0
++    for info in "${candidates[@]}"; do
++      local __pw=$(echo "$info" | sed -r "s/,\s*/,/g" | cut -d , -f 9)
++      local __cc=$(printf '%s\n' "${clients[@]}" | \
++        grep -c "$(echo "$info" | sed -r "s/,\s*/,/g" | cut -d , -f 1)" 2>/dev/null; true)
++      [ "$__pw" = "-1" ] && __pw=-999
++      echo "$__cc $__pw $__i"
++      __i=$((__i+1))
++    done | sort -k1,1nr -k2,2nr -k3,3n | awk '{print $3}'
++  ) )
++  local info __i
++  for __i in "${__scanOrder[@]}"; do
++    info="${candidates[$__i]}"
+     info=$(echo "$info" | sed -r "s/,\s*/,/g")
+ 
+     local mac=$(echo "$info" | cut -d , -f 1)
