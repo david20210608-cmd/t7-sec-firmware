@@ -1,0 +1,47 @@
+t7: sort target list ascending by (has-clients, power): weak APs with no
+clients first, strong APs with clients at the bottom, same order as the
+fluxion 003 patch. Pure-bash selection sort (single score clients*10000
++ power) because busybox sort ignores -k/-t - the upstream sort here
+silently never sorted on t7.
+
+--- a/airgeddon.sh
++++ b/airgeddon.sh
+@@ -16121,7 +16121,37 @@
+ 		return 1
+ 	fi
+ 
+-	sort -t "," -n -k 3 "${tmpdir}nws.txt" > "${tmpdir}wnws.txt"
++	# t7: sort ascending by (has-clients, power): weak APs with no clients
++	# first, strong APs with clients at the bottom (same order as the
++	# fluxion 003 patch). Pure-bash selection sort because busybox sort
++	# ignores -k/-t (the old sort here silently never sorted on t7).
++	local -a __agLines=() __agScore=()
++	local __mac __ch __pw __essid __enc __auth __cl __i __j __best __tmp
++	while IFS=, read -r __mac __ch __pw __essid __enc __auth; do
++		__cl=0
++		grep -q "${__mac}" < "${tmpdir}clts.csv" 2> /dev/null && __cl=1
++		[ -z "${__pw}" ] && __pw=0
++		__agLines+=("${__mac},${__ch},${__pw},${__essid},${__enc},${__auth}")
++		__agScore+=($(( __cl * 10000 + __pw )))
++	done < "${tmpdir}nws.txt"
++	for __i in "${!__agLines[@]}"; do
++		__best=$__i
++		for (( __j = __i + 1; __j < ${#__agLines[@]}; __j++ )); do
++			if [ "${__agScore[$__j]}" -lt "${__agScore[$__best]}" ]; then
++				__best=$__j
++			fi
++		done
++		__tmp=${__agLines[$__i]}
++		__agLines[$__i]=${__agLines[$__best]}
++		__agLines[$__best]=$__tmp
++		__tmp=${__agScore[$__i]}
++		__agScore[$__i]=${__agScore[$__best]}
++		__agScore[$__best]=$__tmp
++	done
++	: > "${tmpdir}wnws.txt"
++	for __i in "${__agLines[@]}"; do
++		printf '%s\n' "${__i}" >> "${tmpdir}wnws.txt"
++	done
+ 	select_target
+ }
+ 
