@@ -32,6 +32,15 @@ rm -rf package/custom
 mkdir -p package/custom
 cp -af "$GITHUB_WORKSPACE/custom-packages/." package/custom/
 
+# reaver/wash 官方 feed 包补丁：mt76（cfg80211-only）上 WEXT SIOCSIWFREQ 无效
+# （内核 WEXT 兼容层已开但 monitor 口换信道仍不生效），信道不跳、wash 内部
+# 信道号恒 0，airgeddon WPS 菜单探索/json 扫描因此一条目标都出不来（beacon
+# 明明在抓包里）。补丁让 change_channel 在 WEXT 失败时回退 iw(nl80211)。
+# 2026-10-29 已在 t7 热修实测：探索/-2 -5/--scan -j 三条路径均正常出目标。
+mkdir -p feeds/packages/net/reaver/patches
+cp -af "$GITHUB_WORKSPACE/custom-packages/reaver/patches/001-wext-iw-fallback-mt76.patch" \
+  feeds/packages/net/reaver/patches/
+
 # fluxion 依赖检查兜底 stub（只在依赖清单出现，攻击代码从不真正调用）：
 #   rfkill —— mt76 没有 rfkill 设备，unblock all 本来就是 no-op，返回 0 即可
 #   7zr    —— 仅 fluxion 的"更新安装器"用于打包备份，攻击流程不碰，触发即报错
