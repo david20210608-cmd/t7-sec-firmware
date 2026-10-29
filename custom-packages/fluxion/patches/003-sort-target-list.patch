@@ -1,21 +1,19 @@
-t7: sort target lists by client count (desc), then power (desc)
-
-WIFI LIST (interactive target selection) and fluxion_scan_only output
-previously followed airodump-ng CSV order. Sort both so APs with clients
-come first, then by signal strength; unsupported power (-1) counts as
-weakest. Pure-bash selection sort on a single score (clients*10000 +
-power) because busybox sort supports only [-nru] (no -k multi-key).
-Parallel candidate* arrays are reordered by one index permutation.
+t7: sort target lists ascending: weak/no-client APs first, strong/client
+APs at the bottom (user preference). Unsupported power (-1) counts as
+weakest (score -999). Pure-bash selection sort on a single score
+(clients*10000 + power) because busybox sort supports only [-nru] (no
+-k multi-key). Parallel candidate* arrays: one index permutation.
 
 --- a/fluxion.sh
 +++ b/fluxion.sh
-@@ -1870,6 +1870,44 @@
+@@ -1870,6 +1870,45 @@
      fi
    done
  
-+  # Sort candidates by client count (desc), then power (desc), treating
-+  # unsupported power (-1) as weakest. Pure-bash selection sort on a single
-+  # score (clients*10000 + power): busybox sort has no -k multi-key support.
++  # Sort candidates by client count (asc), then power (asc): weak APs with
++  # no clients first, strong APs with clients at the bottom. Unsupported
++  # power (-1) counts as weakest (score -999). Pure-bash selection sort on
++  # a single score (clients*10000 + power): busybox sort has no -k support.
 +  # All candidate* arrays are parallel: reorder by one index permutation.
 +  if [ ${#candidatesMAC[@]} -gt 1 ]; then
 +    local -a __sortByClientsPower=() __sortScore=()
@@ -29,7 +27,7 @@ Parallel candidate* arrays are reordered by one index permutation.
 +    for __i in "${!__sortByClientsPower[@]}"; do
 +      __best=$__i
 +      for (( __j = __i + 1; __j < ${#__sortByClientsPower[@]}; __j++ )); do
-+        if [ "${__sortScore[${__sortByClientsPower[$__j]}]}" -gt \
++        if [ "${__sortScore[${__sortByClientsPower[$__j]}]}" -lt \
 +             "${__sortScore[${__sortByClientsPower[$__best]}]}" ]; then
 +          __best=$__j
 +        fi
@@ -54,15 +52,16 @@ Parallel candidate* arrays are reordered by one index permutation.
    # Check if all networks were filtered out
    if [ ${#candidatesMAC[@]} -eq 0 ]; then
      local emptyMessage=""
-@@ -3249,9 +3287,35 @@
+@@ -3249,9 +3288,36 @@
    printf "%-4s %-17s %-4s %-5s %-4s %-10s %-30s %s\n" \
      "---" "-----------------" "---" "-----" "----" "----------" "------------------------------" "----"
  
 -  # Print each network.
 -  local info
 -  for info in "${candidates[@]}"; do
-+  # Sort networks by client count (desc), then power (desc), treating
-+  # unsupported power (-1) as weakest, then print. Pure-bash selection sort
++  # Sort networks by client count (asc), then power (asc): weak APs with
++  # no clients first, strong APs with clients at the bottom. Unsupported
++  # power (-1) counts as weakest (score -999). Pure-bash selection sort
 +  # on a single score (clients*10000 + power): busybox sort has no -k
 +  # multi-key support.
 +  local -a __scanOrder=() __scanScore=()
@@ -78,7 +77,7 @@ Parallel candidate* arrays are reordered by one index permutation.
 +  for __i in "${!__scanOrder[@]}"; do
 +    __best=$__i
 +    for (( __j = __i + 1; __j < ${#__scanOrder[@]}; __j++ )); do
-+      if [ "${__scanScore[${__scanOrder[$__j]}]}" -gt \
++      if [ "${__scanScore[${__scanOrder[$__j]}]}" -lt \
 +           "${__scanScore[${__scanOrder[$__best]}]}" ]; then
 +        __best=$__j
 +      fi
