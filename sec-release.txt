@@ -1,5 +1,6 @@
 ### 工具清单
 - 攻击链：aircrack-ng 全家 + airmon-ng、mdk4、cowpatty、ettercap 0.8.4.1、reaver、pixiewps、hcxtools、hcxdumptool、nmap、tcpdump
+- reaver/wash 带本地补丁：mt76 上 WEXT 换信道失效，回退 iw（nl80211）——否则 airgeddon WPS 菜单扫描零目标
 - evil-twin 框架：fluxion v6.32（禁启动查新）、airgeddon v12.02（强制 tmux、禁查新）
 - 门户栈：lighttpd（默认不自启）+ php8-cgi + kea-dhcp4
 - 网络：zerotier（LuCI 集成）、nftables

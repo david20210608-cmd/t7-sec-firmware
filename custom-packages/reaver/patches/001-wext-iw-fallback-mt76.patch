@@ -1,0 +1,23 @@
+diff --git a/src/iface.c b/src/iface.c
+index 37aac75..f8b44c5 100644
+--- a/src/iface.c
++++ b/src/iface.c
+@@ -191,6 +191,18 @@ int change_channel(int channel)
+                 iw_sockets_close(skfd);
+         }
+ 
++        /* WEXT SIOCSIWFREQ fails on cfg80211-only drivers (mt76/mac80211):
++         * the ioctl is ignored so the interface never hops AND the internal
++         * channel tracker (get_channel()) stays 0, which makes wash drop
++         * every beacon at the "get_channel() == channel" display gate.
++         * Fall back to nl80211 via iw. */
++        if(!ret_val && get_iface())
++        {
++                char cmd[64];
++                snprintf(cmd, sizeof(cmd), "iw dev %s set channel %d", get_iface(), channel);
++                if(system(cmd) == 0) { set_channel(channel); ret_val = 1; }
++        }
++
+         return ret_val;
+ }
+ #endif
