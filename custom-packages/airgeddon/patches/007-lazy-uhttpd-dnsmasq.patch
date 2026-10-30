@@ -1,0 +1,46 @@
+t7: stop LuCI/system dnsmasq only when an evil twin attack actually
+starts, not at airgeddon launch. launch_webserver takes over :80,
+launch_dns_blackhole takes over :53 (dnsmasq-full wildcard-bind conflict),
+restore_et_interface hands both back when the attack tears down -
+handshake/PMKID/WPS runs never touch them. Pairs with the wrapper change
+(trap keeps a safety-net restart).
+
+diff --git a/airgeddon.sh b/airgeddon.sh
+index b8ffdc9..1de0b77 100755
+--- a/airgeddon.sh
++++ b/airgeddon.sh
+@@ -1775,6 +1775,12 @@ function restore_et_interface() {
+ 
+ 	debug_print
+ 
++	# t7: the wrapper no longer stops LuCI/system dnsmasq up front - only
++	# evil twin attacks take over :80/:53 - so give the system services
++	# back as soon as the attack tears down (idempotent no-ops otherwise).
++	/etc/init.d/dnsmasq start > /dev/null 2>&1
++	/etc/init.d/uhttpd start > /dev/null 2>&1
++
+ 	echo
+ 	language_strings "${language}" 299 "blue"
+ 
+@@ -13327,6 +13333,10 @@ function launch_dns_blackhole() {
+ 
+ 	debug_print
+ 
++	# t7: system dnsmasq-full wildcard-binds :53, the attack instance
++	# would fail with "Address in use" - take over only now (see wrapper).
++	/etc/init.d/dnsmasq stop > /dev/null 2>&1
++
+ 	recalculate_windows_sizes
+ 
+ 	rm -rf "${tmpdir}${dnsmasq_file}" > /dev/null 2>&1
+@@ -13761,6 +13771,10 @@ function launch_webserver() {
+ 
+ 	debug_print
+ 
++	# t7: portal needs :80, LuCI (uhttpd) holds it - take over only when
++	# the portal actually starts, handshake/PMKID/WPS runs never touch it.
++	/etc/init.d/uhttpd stop > /dev/null 2>&1
++
+ 	recalculate_windows_sizes
+ 	lighttpd_window_position=${g4_bottomright_window}
+ 	manage_output "+j -bg \"#000000\" -fg \"#FFFF00\" -geometry ${lighttpd_window_position} -T \"Webserver\"" "lighttpd -D -f \"${tmpdir}${webserver_file}\"" "Webserver"

@@ -1,0 +1,28 @@
+t7: stop LuCI only when the captive portal web server actually starts
+(lighttpd binds 0.0.0.0:80), hand it back in stop_attack -
+handshake-snooper-only runs never touch the web server. Pairs with the
+wrapper change (trap keeps a safety-net restart).
+
+diff --git a/attacks/Captive Portal/attack.sh b/attacks/Captive Portal/attack.sh
+index 69f6f30..bf2bc5e 100755
+--- a/attacks/Captive Portal/attack.sh	
++++ b/attacks/Captive Portal/attack.sh	
+@@ -1938,6 +1938,8 @@ stop_attack() {
+   fi
+   # Fallback: kill any lighttpd using fluxion's workspace config (handles daemon-restart edge cases).
+   pkill -f "lighttpd.*$FLUXIONWorkspacePath" &>/dev/null || true
++  # t7: portal is gone, hand :80 back to LuCI (no-op if never taken).
++  /etc/init.d/uhttpd start >/dev/null 2>&1
+ 
+   # Kill DNS service if one is found.
+   if [ "$CaptivePortalDNSServiceXtermPID" ]; then
+@@ -2064,6 +2066,9 @@ start_attack() {
+     >> $FLUXIONOutputDevice
+ 
+   echo -e "$FLUXIONVLine $CaptivePortalStartingWebServiceNotice"
++  # t7: portal binds 0.0.0.0:80, LuCI (uhttpd) holds it - stop it only
++  # now, handshake-snooper-only runs never touch the web server.
++  /etc/init.d/uhttpd stop >/dev/null 2>&1
+   # Clear any previous log entries
+   > "$FLUXIONWorkspacePath/lighttpd.log"
+   # Run lighttpd with -D (foreground, no fork) so $! captures the real PID.

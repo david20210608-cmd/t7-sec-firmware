@@ -11,12 +11,10 @@ export AIRGEDDON_6GHZ_ENABLED=false
 # make sure monitor interfaces exist before the script enumerates them;
 # airgeddon's exit cleanup resets interfaces to managed, put monitors back
 /usr/bin/evil-twin-mon ensure
-# 门户类攻击要独占 :80（web 门户）与 :53/:67（dns/dhcp 黑洞），与系统
-# uhttpd(LuCI)/dnsmasq-full 冲突（dnsmasq 通配绑 :53，attack 实例报
-# "Address in use"——airgeddon 官方要求同样停掉系统 resolver）。会话期间
-# 让位，退出即恢复；恢复动作走 trap，强杀场景同样执行。
-/etc/init.d/uhttpd stop
-/etc/init.d/dnsmasq stop
+# uhttpd(LuCI)/dnsmasq 不再进场就停（handshake/PMKID/WPS 不碰 :80/:53）：
+# airgeddon 007 补丁在真正走到 evil twin 的 launch_dns_blackhole /
+# launch_webserver 时才接管，restore_et_interface 在攻击结束即归还。
+# 这里只在 trap 兜底恢复一次（幂等，正常路径已被补丁还原）。
 trap '
 	rc=$?
 	/etc/init.d/dnsmasq start
