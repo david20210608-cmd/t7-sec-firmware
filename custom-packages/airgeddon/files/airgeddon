@@ -44,6 +44,12 @@ trap '
 	fi
 	/etc/init.d/dnsmasq start
 	uhttpd_handback
+	# ET 联网共享的 iptables nat 残留兜底（airgeddon 的 MASQUERADE 带接口限定、
+	# 危害小于 fluxion 的无限定版——那会 SNAT 掉回环流量让 zerotier-cli 401——
+	# 但退出后同样无用）：fw4 用 inet fw4 表、dnsmasq 劫持用 inet dnsmasq 表，
+	# 均不受影响；幂等。
+	iptables -t nat -F PREROUTING 2>/dev/null
+	iptables -t nat -F POSTROUTING 2>/dev/null
 	/usr/bin/evil-twin-mon ensure
 	exit $rc
 ' EXIT HUP INT TERM

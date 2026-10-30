@@ -42,10 +42,17 @@ nft list chain inet fw4 input 2>/dev/null | grep -q fluxwl || \
 # trap 兜底：任何退出路径（菜单正常退出走 stop_attack，Ctrl-C/screen 断开则
 # 绕过）都可能留下门户 lighttpd 占住 0.0.0.0:80——杀掉后一律走 uhttpd_handback
 # （等待 socket 释放再按需 restart，避免半绑定，见上）。
+# NAT 兜底：captive_portal_set_routes 加的无限定 MASQUERADE 会把本机回环 v4
+# 流量也 SNAT 成外网 IP，zerotier-cli 因此 401（daemon 视为非本地连接，同上
+# 游 issue #533）；无限定 DNAT 则劫持全部 80/443。其 pause/resume 用后台
+# set_routes &，退出清理存在竞态（2026-10-30 实攻复现），统一冲掉 ip nat 表
+# 兜底——fw4 用 inet fw4 表、dnsmasq 劫持用 inet dnsmasq 表，均不受影响。
 trap '
 	rc=$?
 	pkill -f "lighttpd -D -f.*fluxspace/lighttpd\\.conf" 2>/dev/null
 	uhttpd_handback
+	iptables -t nat -F PREROUTING 2>/dev/null
+	iptables -t nat -F POSTROUTING 2>/dev/null
 	fluxion_ifrestore
 	wifi reload
 	/usr/bin/evil-twin-mon ensure
