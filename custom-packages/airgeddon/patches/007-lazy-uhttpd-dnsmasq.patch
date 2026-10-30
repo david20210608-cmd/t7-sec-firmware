@@ -61,3 +61,31 @@ index b8ffdc9..1de0b77 100755
  	recalculate_windows_sizes
  	lighttpd_window_position=${g4_bottomright_window}
  	manage_output "+j -bg \"#000000\" -fg \"#FFFF00\" -geometry ${lighttpd_window_position} -T \"Webserver\"" "lighttpd -D -f \"${tmpdir}${webserver_file}\"" "Webserver"
+@@ -1371,10 +1371,18 @@ function check_busy_ports() {
+ function check_busy_ports() {
+ 
+ 	debug_print
+ 
+ 	IFS=' ' read -r -a tcp_ports <<< "${ports_needed["tcp"]}"
+ 	IFS=' ' read -r -a udp_ports <<< "${ports_needed["udp"]}"
+ 
++	# t7: uhttpd(LuCI) is only stopped when the portal web server actually
++	# launches (launch_webserver), which happens AFTER this preflight - stop
++	# it here first so the check doesn't fail on our own LuCI. If a foreign
++	# process still holds the port, bring uhttpd back before bailing out.
++	if [[ " ${tcp_ports[*]} " == *" ${www_port} "* ]]; then
++		/etc/init.d/uhttpd stop > /dev/null 2>&1
++	fi
++
+ 	if [[ -n "${tcp_ports[*]}" ]] && [[ "${#tcp_ports[@]}" -ge 1 ]]; then
+ 		port_type="tcp"
+ 		for tcp_port in "${tcp_ports[@]}"; do
+@@ -1381,5 +1389,8 @@ function check_busy_ports() {
+ 			if ! check_tcp_udp_port "${tcp_port}" "${port_type}" "${interface}"; then
+ 				busy_port="${tcp_port}"
++				# t7: we may have stopped uhttpd for this preflight; bring it
++				# back when a genuinely foreign process still blocks the port.
++				[[ "${tcp_port}" = "${www_port}" ]] && /etc/init.d/uhttpd start > /dev/null 2>&1
+ 				find_process_name_by_port "${tcp_port}" "${port_type}"
+ 				echo
+ 				language_strings "${language}" 698 "red"
