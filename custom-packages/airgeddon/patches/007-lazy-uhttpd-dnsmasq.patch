@@ -9,19 +9,36 @@ diff --git a/airgeddon.sh b/airgeddon.sh
 index b8ffdc9..1de0b77 100755
 --- a/airgeddon.sh
 +++ b/airgeddon.sh
-@@ -1775,6 +1775,12 @@ function restore_et_interface() {
+@@ -1775,6 +1775,29 @@ function restore_et_interface() {
  
  	debug_print
  
-+	# t7: the wrapper no longer stops LuCI/system dnsmasq up front - only
-+	# evil twin attacks take over :80/:53 - so give the system services
-+	# back as soon as the attack tears down (idempotent no-ops otherwise).
-+	/etc/init.d/dnsmasq start > /dev/null 2>&1
-+	/etc/init.d/uhttpd start > /dev/null 2>&1
++	# t7: wrapper no longer stops LuCI/system dnsmasq up front - give them
++	# back as soon as the attack tears down (kill_et_windows above already
++	# SIGTERMed the attack instances). A blind start races their socket
++	# release: uhttpd half-binds (v4 bind fails silently, only :::80 left;
++	# every later start is a no-op) and dnsmasq dies on "address in use".
++	# dnsmasq: wait for :53 to clear, then restart (ET teardown always took
++	# it over). uhttpd: wait for a non-uhttpd holder on 0.0.0.0:80, restart
++	# iff uhttpd isn't properly listening (healthy = zero action).
++	local i=0
++	while [ $i -lt 15 ] && netstat -tlnup 2>/dev/null | grep -q ':53 '; do
++		sleep 0.2
++		i=$((i+1))
++	done
++	netstat -tlnup 2>/dev/null | grep -q ':53 ' || \
++		/etc/init.d/dnsmasq restart > /dev/null 2>&1
++	local j=0
++	while [ $j -lt 15 ] && netstat -tlnp 2>/dev/null | grep '0\.0\.0\.0:80 ' | grep -qv uhttpd; do
++		sleep 0.2
++		j=$((j+1))
++	done
++	netstat -tlnp 2>/dev/null | grep -q '0\.0\.0\.0:80 .*uhttpd' || \
++		/etc/init.d/uhttpd restart > /dev/null 2>&1
 +
  	echo
  	language_strings "${language}" 299 "blue"
- 
+
 @@ -13327,6 +13333,10 @@ function launch_dns_blackhole() {
  
  	debug_print

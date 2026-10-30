@@ -15,6 +15,20 @@ fluxion_ifrestore() {
 	done
 }
 
+# :80 归还：门户 lighttpd 被杀后 socket 释放有延迟，盲目 start 会让 uhttpd
+# 半绑定（v4 bind 失败静默，只剩 :::80，之后 start 永远空操作，2026-10-30
+# 菜单正常退出实测复现）。等占用者退出，再仅在 0.0.0.0:80 没有 uhttpd 正常
+# 监听时 restart——半绑定修复与停机补启动二合一，健康时不动 LuCI。
+uhttpd_handback() {
+	local i=0
+	while [ "$i" -lt 15 ] && netstat -tlnp 2>/dev/null | grep '0\.0\.0\.0:80 ' | grep -qv uhttpd; do
+		sleep 0.2
+		i=$((i+1))
+	done
+	netstat -tlnp 2>/dev/null | grep -q '0\.0\.0\.0:80 .*uhttpd' || \
+		/etc/init.d/uhttpd restart >/dev/null 2>&1
+}
+
 /usr/bin/evil-twin-mon ensure
 # fw4（nftables）input 基础链 policy=drop，fluxwl* 不属于任何 zone：手机的
 # DNS 劫持与 DNAT 后的 80/443 流量全被静默丢弃（2026-10-22 实攻：能连 WiFi、
@@ -25,15 +39,13 @@ nft list chain inet fw4 input 2>/dev/null | grep -q fluxwl || \
 # fluxion 生成的 lighttpd.conf 固定绑 0.0.0.0:80，与 uhttpd(LuCI) 冲突；
 # 但不再进场就停（handshake snooper 单独跑时不碰 :80）：004 补丁在门户的
 # lighttpd 真正启动前接管、stop_attack 里归还。
-# trap 兜底：Ctrl-C/screen 断开等异常退出绕过 stop_attack 时，门户 lighttpd
-# 会残留占住 0.0.0.0:80（2026-10-30 实攻复现），此时 uhttpd 即使被 start 也
-# 只能绑上 :::80（v4 bind 失败静默）——所以杀掉残留 lighttpd 后必须 restart
-# 才能拿回 v4；没残留时普通 start 即可（不折腾 LuCI）。
+# trap 兜底：任何退出路径（菜单正常退出走 stop_attack，Ctrl-C/screen 断开则
+# 绕过）都可能留下门户 lighttpd 占住 0.0.0.0:80——杀掉后一律走 uhttpd_handback
+# （等待 socket 释放再按需 restart，避免半绑定，见上）。
 trap '
 	rc=$?
-	pkill -f "lighttpd -D -f.*fluxspace/lighttpd\\.conf" 2>/dev/null \
-		&& /etc/init.d/uhttpd restart \
-		|| /etc/init.d/uhttpd start
+	pkill -f "lighttpd -D -f.*fluxspace/lighttpd\\.conf" 2>/dev/null
+	uhttpd_handback
 	fluxion_ifrestore
 	wifi reload
 	/usr/bin/evil-twin-mon ensure

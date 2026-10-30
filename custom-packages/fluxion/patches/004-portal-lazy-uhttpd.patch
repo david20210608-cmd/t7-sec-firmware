@@ -7,12 +7,21 @@ diff --git a/attacks/Captive Portal/attack.sh b/attacks/Captive Portal/attack.sh
 index 69f6f30..bf2bc5e 100755
 --- a/attacks/Captive Portal/attack.sh	
 +++ b/attacks/Captive Portal/attack.sh	
-@@ -1938,6 +1938,8 @@ stop_attack() {
+@@ -1938,6 +1938,17 @@ stop_attack() {
    fi
    # Fallback: kill any lighttpd using fluxion's workspace config (handles daemon-restart edge cases).
    pkill -f "lighttpd.*$FLUXIONWorkspacePath" &>/dev/null || true
-+  # t7: portal is gone, hand :80 back to LuCI (no-op if never taken).
-+  /etc/init.d/uhttpd start >/dev/null 2>&1
++  # t7: portal is gone, hand :80 back to LuCI. A blind start races lighttpd's
++  # socket release - uhttpd then half-binds (v4 bind fails silently, only :::80
++  # left; every later start is a no-op). Wait for the holder to exit, restart
++  # iff uhttpd isn't properly on 0.0.0.0:80 (restart also covers a stopped one).
++  local i=0
++  while [ $i -lt 15 ] && netstat -tlnp 2>/dev/null | grep '0\.0\.0\.0:80 ' | grep -qv uhttpd; do
++    sleep 0.2
++    i=$((i+1))
++  done
++  netstat -tlnp 2>/dev/null | grep -q '0\.0\.0\.0:80 .*uhttpd' || \
++    /etc/init.d/uhttpd restart >/dev/null 2>&1
  
    # Kill DNS service if one is found.
    if [ "$CaptivePortalDNSServiceXtermPID" ]; then
