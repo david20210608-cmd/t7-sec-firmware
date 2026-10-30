@@ -10,3 +10,10 @@ sed -i 's#^  choices.=(..FLUXIONGeneralBackOption.)$#  if [ -x "$(command -v hcx
 sed -i 's#^      HandshakeSnooperVerifierIdentifier="cowpatty" ;;$#&\n    "hash - hcxpcapngtool (SAE/WPA3)")\n      HandshakeSnooperVerifierIdentifier="hcxpcapngtool" ;;#' "$f"
 # PMF hint: SAE targets drop forged deauth; pmf-detect warns from the airodump CSV
 sed -i 's@^  handshake_snooper_start_deauthenticator$@&\n  # t7: WPA3/SAE targets enforce 802.11w PMF; forged deauth is dropped.\n  ( sleep 10; pmf-detect "$FLUXIONWorkspacePath/capture/dump-01.csv" "$FluxionTargetMAC" >> "$FLUXIONWorkspacePath/handshake_snooper.log" 2>\&1 ) \&@' "$f"
+# t7: heal wedged 5G monitor at each captor restart (snippet file keeps the
+# awk program free of sed &/$ escaping). Insert before start_captor's first
+# "local parentPID" (function handshake_snooper_start_captor).
+awk -v t="$(dirname "$0")/hs-mon-heal.snippet" '
+  BEGIN{while((getline l < t)>0) ins=ins l ORS}
+  !done && /^  local parentPID$/{printf "%s", ins; done=1}
+  {print}' "$f" > "$f.new" && mv "$f.new" "$f"

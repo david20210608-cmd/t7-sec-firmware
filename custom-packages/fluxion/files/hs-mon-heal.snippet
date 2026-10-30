@@ -1,0 +1,19 @@
+  # t7: mt798x 5G monitor wedges after long recapture loops (wdev loses its
+  # channel context: iw info shows no channel and channel set returns EBUSY,
+  # airodump then displays headers only). Recreate the interface on the same
+  # phy to heal; log driver state to /tmp/mon-heal.log for diagnosis.
+  if ! iw dev "$HandshakeSnooperJammerInterface" info 2>/dev/null | grep -q channel || \
+     ! iw dev "$HandshakeSnooperJammerInterface" set channel "$FluxionTargetChannel" 2>/dev/null; then
+    { echo "=== $(date '+%F %T') WEDGE on $HandshakeSnooperJammerInterface (target ch $FluxionTargetChannel)"
+      iw dev "$HandshakeSnooperJammerInterface" info
+      dmesg | tail -20
+    } >> /tmp/mon-heal.log 2>&1
+    local monPhy=$(iw dev "$HandshakeSnooperJammerInterface" info 2>/dev/null | awk '/wiphy/{print $2}')
+    echo "t7: monitor channel wedged; recreating $HandshakeSnooperJammerInterface (phy$monPhy)" >> $FLUXIONOutputDevice 2>&1
+    iw dev "$HandshakeSnooperJammerInterface" del 2>/dev/null
+    iw phy"$monPhy" interface add "$HandshakeSnooperJammerInterface" type monitor
+    ip link set "$HandshakeSnooperJammerInterface" up
+    iw dev "$HandshakeSnooperJammerInterface" set channel "$FluxionTargetChannel"
+    echo "=== $(date '+%F %T') healed phy$monPhy $HandshakeSnooperJammerInterface -> ch $FluxionTargetChannel" >> /tmp/mon-heal.log 2>&1
+    sleep 1
+  fi
