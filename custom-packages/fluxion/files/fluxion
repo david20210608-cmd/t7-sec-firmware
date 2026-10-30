@@ -24,11 +24,16 @@ nft list chain inet fw4 input 2>/dev/null | grep -q fluxwl || \
 	nft insert rule inet fw4 input iifname "fluxwl*" counter accept
 # fluxion 生成的 lighttpd.conf 固定绑 0.0.0.0:80，与 uhttpd(LuCI) 冲突；
 # 但不再进场就停（handshake snooper 单独跑时不碰 :80）：004 补丁在门户的
-# lighttpd 真正启动前接管、stop_attack 里归还。这里只在 trap 兜底恢复一次
-# （幂等；Ctrl-C/杀 tmux 强杀场景靠它兜住）。
+# lighttpd 真正启动前接管、stop_attack 里归还。
+# trap 兜底：Ctrl-C/screen 断开等异常退出绕过 stop_attack 时，门户 lighttpd
+# 会残留占住 0.0.0.0:80（2026-10-30 实攻复现），此时 uhttpd 即使被 start 也
+# 只能绑上 :::80（v4 bind 失败静默）——所以杀掉残留 lighttpd 后必须 restart
+# 才能拿回 v4；没残留时普通 start 即可（不折腾 LuCI）。
 trap '
 	rc=$?
-	/etc/init.d/uhttpd start
+	pkill -f "lighttpd.*fluxspace" 2>/dev/null \
+		&& /etc/init.d/uhttpd restart \
+		|| /etc/init.d/uhttpd start
 	fluxion_ifrestore
 	wifi reload
 	/usr/bin/evil-twin-mon ensure

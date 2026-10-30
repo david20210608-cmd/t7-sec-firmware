@@ -14,11 +14,21 @@ export AIRGEDDON_6GHZ_ENABLED=false
 # uhttpd(LuCI)/dnsmasq 不再进场就停（handshake/PMKID/WPS 不碰 :80/:53）：
 # airgeddon 007 补丁在真正走到 evil twin 的 launch_dns_blackhole /
 # launch_webserver 时才接管，restore_et_interface 在攻击结束即归还。
-# 这里只在 trap 兜底恢复一次（幂等，正常路径已被补丁还原）。
+# trap 兜底：wrapper 被强杀时 tmux 窗口里的 attack lighttpd/dnsmasq 会残留
+# （同 fluxion 的教训：残留占 :80 会把 uhttpd 卡成只有 :::80 的半绑定），
+# 杀到残留才 restart，否则普通 start（不折腾 LuCI）。
 trap '
 	rc=$?
-	/etc/init.d/dnsmasq start
-	/etc/init.d/uhttpd start
+	killed=0
+	pkill -f "lighttpd.*ag\\.lighttpd\\.conf" 2>/dev/null && killed=1
+	pkill -f "dnsmasq.*ag\\.dnsmasq\\.conf" 2>/dev/null && killed=1
+	if [ "$killed" = 1 ]; then
+		/etc/init.d/uhttpd restart
+		/etc/init.d/dnsmasq restart
+	else
+		/etc/init.d/dnsmasq start
+		/etc/init.d/uhttpd start
+	fi
 	/usr/bin/evil-twin-mon ensure
 	exit $rc
 ' EXIT HUP INT TERM
