@@ -31,7 +31,7 @@ nft list chain inet fw4 input 2>/dev/null | grep -q fluxwl || \
 # 才能拿回 v4；没残留时普通 start 即可（不折腾 LuCI）。
 trap '
 	rc=$?
-	pkill -f "lighttpd.*fluxspace" 2>/dev/null \
+	pkill -f "lighttpd -D -f.*fluxspace/lighttpd\\.conf" 2>/dev/null \
 		&& /etc/init.d/uhttpd restart \
 		|| /etc/init.d/uhttpd start
 	fluxion_ifrestore

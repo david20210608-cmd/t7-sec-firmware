@@ -20,8 +20,8 @@ export AIRGEDDON_6GHZ_ENABLED=false
 trap '
 	rc=$?
 	killed=0
-	pkill -f "lighttpd.*ag\\.lighttpd\\.conf" 2>/dev/null && killed=1
-	pkill -f "dnsmasq.*ag\\.dnsmasq\\.conf" 2>/dev/null && killed=1
+	pkill -f "lighttpd -D -f.*ag\\.lighttpd\\.conf" 2>/dev/null && killed=1
+	pkill -f "dnsmasq -C.*ag\\.dnsmasq\\.conf" 2>/dev/null && killed=1
 	if [ "$killed" = 1 ]; then
 		/etc/init.d/uhttpd restart
 		/etc/init.d/dnsmasq restart
