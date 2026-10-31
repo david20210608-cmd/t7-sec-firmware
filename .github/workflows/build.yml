@@ -94,6 +94,45 @@ jobs:
         find dl -size -1024c -exec ls -l {} \;
         find dl -size -1024c -exec rm -f {} \;
 
+    - name: Validate custom package patches
+      run: |
+        # 编译前快速校验：按 Makefile 固定的 PKG_SOURCE_VERSION 导出干净树，
+        # 按 OpenWrt 的补丁序号顺序逐个应用。任何 patch 失效（乱序 hunk、
+        # 空格路径缺 TAB 终止、上游上下文变化）在几十秒内失败，而不是
+        # 烧完 2.5h 编译才在某个包上炸出来（2026-10-30/31 两次实败教训）。
+        set -e
+        tmp=$(mktemp -d)
+        trap 'rm -rf "$tmp"' EXIT
+        fail=0
+        for mf in custom-packages/*/Makefile; do
+          pkg=$(dirname "$mf")
+          name=$(basename "$pkg")
+          [ -d "$pkg/patches" ] || continue
+          grep -q '^PKG_SOURCE_PROTO:=git' "$mf" || continue
+          url=$(sed -n 's/^PKG_SOURCE_URL:=//p' "$mf")
+          ver=$(sed -n 's/^PKG_SOURCE_VERSION:=//p' "$mf")
+          if [ -z "$ver" ]; then
+            echo "::error::$name: patches/ 存在但 Makefile 缺 PKG_SOURCE_VERSION"
+            fail=1
+            continue
+          fi
+          echo "== $name @ $ver"
+          src="$tmp/$name"
+          git clone --quiet --filter=blob:none "$url" "$src"
+          git -C "$src" checkout --quiet "$ver"
+          mkdir -p "$src/tree"
+          git -C "$src" archive "$ver" | tar -x -C "$src/tree"
+          for p in "$pkg"/patches/*.patch; do
+            if ! patch -p1 -s -d "$src/tree" < "$p"; then
+              echo "::error::$name: $(basename "$p") 应用失败"
+              fail=1
+              break
+            fi
+            echo "   ok: $(basename "$p")"
+          done
+        done
+        exit $fail
+
     - name: Compile firmware
       id: compile
       working-directory: /workdir/openwrt
