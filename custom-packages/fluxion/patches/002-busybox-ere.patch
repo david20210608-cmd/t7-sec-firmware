@@ -38,17 +38,6 @@
    if [ "$currentMode" != "monitor" ]; then
      interface_set_mode "$interface" monitor &>> $FLUXIONOutputDevice
      sleep 1
---- a/attacks/Captive Portal/attack.sh
-+++ b/attacks/Captive Portal/attack.sh
-@@ -1818,7 +1818,7 @@
- 
-   echo -e "$FLUXIONVLine $CaptivePortalStartingJammerServiceNotice"
- 
--  local currentMode=$(iw dev "$CaptivePortalJammerInterface" info 2>/dev/null | grep -oP 'type \K\w+')
-+  local currentMode=$(iw dev "$CaptivePortalJammerInterface" info 2>/dev/null | awk '/^[[:space:]]*type[[:space:]]/{print $2}')
-   if [ "$currentMode" != "monitor" ]; then
-     interface_set_mode "$CaptivePortalJammerInterface" monitor &>> $FLUXIONOutputDevice
-     sleep 1
 --- a/scripts/diagnostics.sh
 +++ b/scripts/diagnostics.sh
 @@ -48,8 +48,8 @@
