@@ -13,7 +13,10 @@ sed -i 's@^  handshake_snooper_start_deauthenticator$@&\n  # t7: WPA3/SAE target
 # t7: heal wedged 5G monitor at each captor restart (snippet file keeps the
 # awk program free of sed &/$ escaping). Insert before start_captor's first
 # "local parentPID" (function handshake_snooper_start_captor).
+# overwrite in place (cat > keeps the original inode's 755; mv would swap in
+# the 644 redirection temp and fluxion_prep_attack's [ ! -x ] check bounces
+# the handshake menu - 2026-10-31 固件实测复现)
 awk -v t="$(dirname "$0")/hs-mon-heal.snippet" '
   BEGIN{while((getline l < t)>0) ins=ins l ORS}
   !done && /^  local parentPID$/{printf "%s", ins; done=1}
-  {print}' "$f" > "$f.new" && mv "$f.new" "$f"
+  {print}' "$f" > "$f.new" && cat "$f.new" > "$f" && rm -f "$f.new"

@@ -40,8 +40,8 @@ endef
 define Package/airgeddon/install
 	$(INSTALL_DIR) $(1)/usr/share/airgeddon $(1)/usr/bin
 	# .pkgdir 在 PKG_BUILD_DIR 里，cp . 会"拷进自己"（cp: cannot copy a directory
-	# into itself），改 tar 管道并排除构建戳
-	(cd $(PKG_BUILD_DIR) && tar --exclude=./.pkgdir --exclude='.prepared*' --exclude='.configured*' --exclude='.built*' -cf - .) | (cd $(1)/usr/share/airgeddon && tar -xf -)
+	# into itself），改 tar 管道并排除构建戳；.orig 是 quilt patch fuzz 的备份副产物
+	(cd $(PKG_BUILD_DIR) && tar --exclude=./.pkgdir --exclude='.prepared*' --exclude='.configured*' --exclude='.built*' --exclude='./*.orig' -cf - .) | (cd $(1)/usr/share/airgeddon && tar -xf -)
 	$(INSTALL_BIN) ./files/airgeddon $(1)/usr/bin/
 endef
 

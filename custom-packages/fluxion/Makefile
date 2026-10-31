@@ -56,8 +56,9 @@ define Package/fluxion/install
 	$(INSTALL_DIR) $(1)/usr/share/fluxion $(1)/usr/bin
 	# .pkgdir 在 PKG_BUILD_DIR 里，cp . 会"拷进自己"（cp: cannot copy a directory
 	# into itself），改 tar 管道并排除构建戳与 ipkg 打包暂存（2026-10-21 发现设备
-	# /usr/share/fluxion/ipkg-aarch64_cortex-a53/ 是这份残留）
-	(cd $(PKG_BUILD_DIR) && tar --exclude=./.pkgdir --exclude=./*.pkgdir --exclude='./ipkg-*' --exclude='.prepared*' --exclude='.configured*' --exclude='.built*' -cf - .) | (cd $(1)/usr/share/fluxion && tar -xf -)
+	# /usr/share/fluxion/ipkg-aarch64_cortex-a53/ 是这份残留）；.orig 是 quilt
+	# patch fuzz 时的备份副产物，不进固件
+	(cd $(PKG_BUILD_DIR) && tar --exclude=./.pkgdir --exclude=./*.pkgdir --exclude='./ipkg-*' --exclude='.prepared*' --exclude='.configured*' --exclude='.built*' --exclude='./*.orig' -cf - .) | (cd $(1)/usr/share/fluxion && tar -xf -)
 	# wrapper 而非 symlink：进出场时挂 evil-twin-mon 的 monitor 口保障
 	$(INSTALL_BIN) ./files/fluxion $(1)/usr/bin/
 	# Handshake Snooper 的 PMF 检测助手（由构建期 sed 注入 arbiter 调用）
