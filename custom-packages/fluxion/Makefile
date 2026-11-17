@@ -9,7 +9,7 @@ include $(TOPDIR)/rules.mk
 
 PKG_NAME:=fluxion
 PKG_VERSION:=6.38
-PKG_RELEASE:=8
+PKG_RELEASE:=9
 
 PKG_BUILD_DIR:=$(BUILD_DIR)/$(PKG_NAME)-$(PKG_VERSION)
 PKG_SOURCE_PROTO:=git
@@ -61,6 +61,12 @@ define Package/fluxion/install
 	(cd $(PKG_BUILD_DIR) && tar --exclude=./.pkgdir --exclude=./*.pkgdir --exclude='./ipkg-*' --exclude='.prepared*' --exclude='.configured*' --exclude='.built*' --exclude='./*.orig' -cf - .) | (cd $(1)/usr/share/fluxion && tar -xf -)
 	# wrapper 而非 symlink：进出场时挂 evil-twin-mon 的 monitor 口保障
 	$(INSTALL_BIN) ./files/fluxion $(1)/usr/bin/
+	# fw4 reload 会冲掉 wrapper 手插的 fluxwl* 放行规则（2026-11-17 实攻：
+	# 会话中 wan ifup 触发 firewall reload，门户从此静默被 policy drop，无弹窗
+	# 无重定向）。watchdog 常驻补插，procd init 保证开机自启+崩溃拉起
+	$(INSTALL_DIR) $(1)/etc/init.d
+	$(INSTALL_BIN) ./files/usr/bin/fluxfw-watchdog $(1)/usr/bin/
+	$(INSTALL_BIN) ./files/etc/init.d/fluxfw-watchdog $(1)/etc/init.d/
 	# Handshake Snooper 的 PMF 检测助手（由构建期 sed 注入 arbiter 调用）
 	$(INSTALL_BIN) ./files/pmf-detect $(1)/usr/bin/
 endef

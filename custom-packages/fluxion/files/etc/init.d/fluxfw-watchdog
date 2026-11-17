@@ -1,0 +1,14 @@
+#!/bin/sh /etc/rc.common
+# Companion daemon for /usr/bin/fluxfw-watchdog: keeps the loop supervised so
+# it survives crashes without needing rc.local hacks.
+START=99
+USE_PROCD=1
+
+start_service() {
+	procd_open_instance
+	procd_set_param command /usr/bin/fluxfw-watchdog
+	procd_set_param respawn 3600 5 0
+	procd_set_param stdout 0
+	procd_set_param stderr 0
+	procd_close_instance
+}

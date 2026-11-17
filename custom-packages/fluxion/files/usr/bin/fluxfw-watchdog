@@ -1,0 +1,17 @@
+#!/bin/sh
+# fw4 reload flushes hand-inserted nft rules (nft insert lives outside fw4's
+# serialized ruleset). Mid-session "ifup of wan -> firewall reload" (2026-11-17
+# 20:46) silently flushed the fluxion portal accept rule the wrapper had
+# inserted: clients kept DHCP but their DNS/HTTP probes were rejected by the
+# input policy=drop, so no captive-portal redirect or prompt ever fired.
+# Re-insert while a fluxwl* interface (active fluxion session) exists; pure
+# no-op otherwise. Session start itself is covered by the wrapper's idempotent
+# insert; this only guards against mid-session flushes.
+while :; do
+	sleep 15
+	ip -o link show 2>/dev/null | grep -q ' fluxwl' || continue
+	nft list chain inet fw4 input 2>/dev/null | grep -q 'iifname "fluxwl\*"' && continue
+	if nft insert rule inet fw4 input iifname "fluxwl*" counter accept; then
+		logger -t fluxfw-watchdog "re-inserted fluxwl accept rule (fw4 reload had flushed it)"
+	fi
+done
